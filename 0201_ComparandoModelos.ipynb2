@@ -1,0 +1,3879 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "provenance": [],
+      "toc_visible": true,
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "name": "ir",
+      "display_name": "R"
+    },
+    "language_info": {
+      "name": "R"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/Guadito/dmeyf2025/blob/main/0201_ComparandoModelos.ipynb2\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "# Comparando Modelos"
+      ],
+      "metadata": {
+        "id": "5DrvzQ9BsXmX"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "Estamos en la  Clase 02\n",
+        "<br> El objetivo de la materia es lograr la mejor predicción para nuestro probleama, para lo que se probarán pipelines con decenas de alternativas, será indispensable comparar varios modelos predictivos entre sí y decidir cual es el mejor\n",
+        "<br> La tarea no es tan sencilla"
+      ],
+      "metadata": {
+        "id": "Y2U9lu16sgta"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## Seteo del ambiente en Google Colab"
+      ],
+      "metadata": {
+        "id": "kmLygy1TYPfg"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "Esta parte se debe correr con el runtime en Python3\n",
+        "<br>Ir al menu, Runtime -> Change Runtime Tipe -> Runtime type ->  **Python 3**"
+      ],
+      "metadata": {
+        "id": "OikOm5K2YU3X"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "Conectar la virtual machine donde esta corriendo Google Colab con el  Google Drive, para poder tener persistencia de archivos"
+      ],
+      "metadata": {
+        "id": "4fmV5LyZdFyI"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# primero establecer el Runtime de Python 3\n",
+        "from google.colab import drive\n",
+        "drive.mount('/content/.drive')"
+      ],
+      "metadata": {
+        "id": "ilEZ-bE2VybW",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "472db376-5e8a-4c4f-a935-df3f2ad48cd4"
+      },
+      "execution_count": 1,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Drive already mounted at /content/.drive; to attempt to forcibly remount, call drive.mount(\"/content/.drive\", force_remount=True).\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "<br>los siguientes comando estan en shell script de Linux\n",
+        "*   Crear las carpetas en el Google Drive\n",
+        "*   Bajar el  **competencia_01_crudo**  al  Google Drive  y tambien al disco local de la virtual machine que esta corriendo Google Colab\n",
+        "\n"
+      ],
+      "metadata": {
+        "id": "ilaKtqWldeWg"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "%%shell\n",
+        "\n",
+        "mkdir -p \"/content/.drive/My Drive/dmeyf\"\n",
+        "mkdir -p \"/content/buckets\"\n",
+        "ln -s \"/content/.drive/My Drive/dmeyf\" /content/buckets/b1\n",
+        "\n",
+        "\n",
+        "mkdir -p /content/buckets/b1/exp\n",
+        "mkdir -p /content/buckets/b1/datasets\n",
+        "mkdir -p /content/datasets\n",
+        "\n",
+        "\n",
+        "\n",
+        "archivo_origen=\"https://storage.googleapis.com/open-courses/dmeyf2025-e4a2/competencia_01_crudo.csv\"\n",
+        "archivo_destino=\"/content/datasets/competencia_01_crudo.csv\"\n",
+        "archivo_destino_bucket=\"/content/buckets/b1/datasets/competencia_01_crudo.csv\"\n",
+        "\n",
+        "if ! test -f $archivo_destino_bucket; then\n",
+        "  wget  $archivo_origen  -O $archivo_destino_bucket\n",
+        "fi\n",
+        "\n",
+        "\n",
+        "if ! test -f $archivo_destino; then\n",
+        "  cp  $archivo_destino_bucket  $archivo_destino\n",
+        "fi\n"
+      ],
+      "metadata": {
+        "id": "W8dQFI5QYCFa",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "0daf3969-d133-4f56-ddf2-abc813d212e3"
+      },
+      "execution_count": 2,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "--2025-08-21 23:12:52--  https://storage.googleapis.com/open-courses/dmeyf2025-e4a2/competencia_01_crudo.csv\n",
+            "Resolving storage.googleapis.com (storage.googleapis.com)... 173.194.194.207, 173.194.195.207, 172.217.214.207, ...\n",
+            "Connecting to storage.googleapis.com (storage.googleapis.com)|173.194.194.207|:443... connected.\n",
+            "HTTP request sent, awaiting response... 200 OK\n",
+            "Length: 490259579 (468M) [text/csv]\n",
+            "Saving to: ‘/content/buckets/b1/datasets/competencia_01_crudo.csv’\n",
+            "\n",
+            "/content/buckets/b1 100%[===================>] 467.55M  55.9MB/s    in 8.6s    \n",
+            "\n",
+            "2025-08-21 23:13:01 (54.5 MB/s) - ‘/content/buckets/b1/datasets/competencia_01_crudo.csv’ saved [490259579/490259579]\n",
+            "\n"
+          ]
+        },
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": []
+          },
+          "metadata": {},
+          "execution_count": 2
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## Generacion de la clase_ternaria"
+      ],
+      "metadata": {
+        "id": "dseB4qb9RqUb"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "Esta parte se debe correr con el runtime en lenguaje **R** Ir al menu, Runtime -> Change Runtime Tipe -> Runtime type -> R"
+      ],
+      "metadata": {
+        "id": "LCEnE_02RuIQ"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "require( \"data.table\" )\n",
+        "\n",
+        "# leo el dataset\n",
+        "dataset <- fread(\"/content/datasets/competencia_01_crudo.csv\" )\n",
+        "\n",
+        "# calculo el periodo0 consecutivo\n",
+        "dsimple <- dataset[, list(\n",
+        "    \"pos\" = .I,\n",
+        "    numero_de_cliente,\n",
+        "    periodo0 = as.integer(foto_mes/100)*12 +  foto_mes%%100 ) ]\n",
+        "\n",
+        "\n",
+        "# ordeno\n",
+        "setorder( dsimple, numero_de_cliente, periodo0 )\n",
+        "\n",
+        "# calculo topes\n",
+        "periodo_ultimo <- dsimple[, max(periodo0) ]\n",
+        "periodo_anteultimo <- periodo_ultimo - 1\n",
+        "\n",
+        "\n",
+        "# calculo los leads de orden 1 y 2\n",
+        "dsimple[, c(\"periodo1\", \"periodo2\") :=\n",
+        "    shift(periodo0, n=1:2, fill=NA, type=\"lead\"),  numero_de_cliente ]\n",
+        "\n",
+        "# assign most common class values = \"CONTINUA\"\n",
+        "dsimple[ periodo0 < periodo_anteultimo, clase_ternaria := \"CONTINUA\" ]\n",
+        "\n",
+        "# calculo BAJA+1\n",
+        "dsimple[ periodo0 < periodo_ultimo &\n",
+        "    ( is.na(periodo1) | periodo0 + 1 < periodo1 ),\n",
+        "    clase_ternaria := \"BAJA+1\" ]\n",
+        "\n",
+        "# calculo BAJA+2\n",
+        "dsimple[ periodo0 < periodo_anteultimo & (periodo0+1 == periodo1 )\n",
+        "    & ( is.na(periodo2) | periodo0 + 2 < periodo2 ),\n",
+        "    clase_ternaria := \"BAJA+2\" ]\n",
+        "\n",
+        "\n",
+        "# pego el resultado en el dataset original y grabo\n",
+        "setorder( dsimple, pos )\n",
+        "dataset[, clase_ternaria := dsimple$clase_ternaria ]\n",
+        "\n",
+        "fwrite( dataset,\n",
+        "    file =  \"/content/datasets/competencia_01.csv.gz\",\n",
+        "    sep = \",\"\n",
+        ")"
+      ],
+      "metadata": {
+        "id": "P863YZB9R1Ua",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "09a941e4-55f7-4879-da36-cca75c37b6ec"
+      },
+      "execution_count": 1,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stderr",
+          "text": [
+            "Loading required package: data.table\n",
+            "\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "setorder( dataset, foto_mes, clase_ternaria, numero_de_cliente)\n",
+        "dataset[, .N, list(foto_mes, clase_ternaria)]"
+      ],
+      "metadata": {
+        "id": "S3hL7tv8W4rn",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 568
+        },
+        "outputId": "cef86f78-54f3-43cc-f263-607c9f47df4f"
+      },
+      "execution_count": 2,
+      "outputs": [
+        {
+          "output_type": "display_data",
+          "data": {
+            "text/html": [
+              "<table class=\"dataframe\">\n",
+              "<caption>A data.table: 15 × 3</caption>\n",
+              "<thead>\n",
+              "\t<tr><th scope=col>foto_mes</th><th scope=col>clase_ternaria</th><th scope=col>N</th></tr>\n",
+              "\t<tr><th scope=col>&lt;int&gt;</th><th scope=col>&lt;chr&gt;</th><th scope=col>&lt;int&gt;</th></tr>\n",
+              "</thead>\n",
+              "<tbody>\n",
+              "\t<tr><td>202101</td><td>BAJA+1  </td><td>   622</td></tr>\n",
+              "\t<tr><td>202101</td><td>BAJA+2  </td><td>   825</td></tr>\n",
+              "\t<tr><td>202101</td><td>CONTINUA</td><td>160080</td></tr>\n",
+              "\t<tr><td>202102</td><td>BAJA+1  </td><td>   831</td></tr>\n",
+              "\t<tr><td>202102</td><td>BAJA+2  </td><td>  1032</td></tr>\n",
+              "\t<tr><td>202102</td><td>CONTINUA</td><td>160292</td></tr>\n",
+              "\t<tr><td>202103</td><td>BAJA+1  </td><td>  1039</td></tr>\n",
+              "\t<tr><td>202103</td><td>BAJA+2  </td><td>   951</td></tr>\n",
+              "\t<tr><td>202103</td><td>CONTINUA</td><td>161119</td></tr>\n",
+              "\t<tr><td>202104</td><td>BAJA+1  </td><td>   955</td></tr>\n",
+              "\t<tr><td>202104</td><td>BAJA+2  </td><td>  1130</td></tr>\n",
+              "\t<tr><td>202104</td><td>CONTINUA</td><td>161333</td></tr>\n",
+              "\t<tr><td>202105</td><td>NA      </td><td>162783</td></tr>\n",
+              "\t<tr><td>202105</td><td>BAJA+1  </td><td>  1134</td></tr>\n",
+              "\t<tr><td>202106</td><td>NA      </td><td>164313</td></tr>\n",
+              "</tbody>\n",
+              "</table>\n"
+            ],
+            "text/markdown": "\nA data.table: 15 × 3\n\n| foto_mes &lt;int&gt; | clase_ternaria &lt;chr&gt; | N &lt;int&gt; |\n|---|---|---|\n| 202101 | BAJA+1   |    622 |\n| 202101 | BAJA+2   |    825 |\n| 202101 | CONTINUA | 160080 |\n| 202102 | BAJA+1   |    831 |\n| 202102 | BAJA+2   |   1032 |\n| 202102 | CONTINUA | 160292 |\n| 202103 | BAJA+1   |   1039 |\n| 202103 | BAJA+2   |    951 |\n| 202103 | CONTINUA | 161119 |\n| 202104 | BAJA+1   |    955 |\n| 202104 | BAJA+2   |   1130 |\n| 202104 | CONTINUA | 161333 |\n| 202105 | NA       | 162783 |\n| 202105 | BAJA+1   |   1134 |\n| 202106 | NA       | 164313 |\n\n",
+            "text/latex": "A data.table: 15 × 3\n\\begin{tabular}{lll}\n foto\\_mes & clase\\_ternaria & N\\\\\n <int> & <chr> & <int>\\\\\n\\hline\n\t 202101 & BAJA+1   &    622\\\\\n\t 202101 & BAJA+2   &    825\\\\\n\t 202101 & CONTINUA & 160080\\\\\n\t 202102 & BAJA+1   &    831\\\\\n\t 202102 & BAJA+2   &   1032\\\\\n\t 202102 & CONTINUA & 160292\\\\\n\t 202103 & BAJA+1   &   1039\\\\\n\t 202103 & BAJA+2   &    951\\\\\n\t 202103 & CONTINUA & 161119\\\\\n\t 202104 & BAJA+1   &    955\\\\\n\t 202104 & BAJA+2   &   1130\\\\\n\t 202104 & CONTINUA & 161333\\\\\n\t 202105 & NA       & 162783\\\\\n\t 202105 & BAJA+1   &   1134\\\\\n\t 202106 & NA       & 164313\\\\\n\\end{tabular}\n",
+            "text/plain": [
+              "   foto_mes clase_ternaria N     \n",
+              "1  202101   BAJA+1            622\n",
+              "2  202101   BAJA+2            825\n",
+              "3  202101   CONTINUA       160080\n",
+              "4  202102   BAJA+1            831\n",
+              "5  202102   BAJA+2           1032\n",
+              "6  202102   CONTINUA       160292\n",
+              "7  202103   BAJA+1           1039\n",
+              "8  202103   BAJA+2            951\n",
+              "9  202103   CONTINUA       161119\n",
+              "10 202104   BAJA+1            955\n",
+              "11 202104   BAJA+2           1130\n",
+              "12 202104   CONTINUA       161333\n",
+              "13 202105   NA             162783\n",
+              "14 202105   BAJA+1           1134\n",
+              "15 202106   NA             164313"
+            ]
+          },
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "# 1  Particion Training/Testing\n",
+        "## Clase 02  Experimento 1"
+      ],
+      "metadata": {
+        "id": "iV32-NeesVp6"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## 1.1  Objetivos\n",
+        "Dado que es el primer experimento de la asignatura, acercar a l@s estudiantes las mejores prácticas de operación del ambiente de Google Cloud, realizando una minuciosa demostración en vivo narrando todas las consideraciones pertinentes para evitar accidentes, daños a terceros y a equipos.\n",
+        "Dar soporte en el acto a  l@s estudiantes que necesitan ayuda para terminar de configurar el ambiente Google Cloud .\n",
+        "<br>Repaso del concepto de  partición de un dataset al azar, estratificada en la clase\n",
+        "<br>Dado que es el primer script que se mostrará en vivo a l@s estudiantes,  realizar una visita guiada del  mismo, su estructura y detalles.\n",
+        "<br>Repaso del algoritmo Arbol de Decisión sus hiperparámetros, y la implementación con la librería  rpart.  Funciones  rpart::rpart  y rpart::predict\n",
+        "<br>Concepto de replicabilidad de los experimentos mediante las semillas de los generadores de secuencias de números pseudoaleatorios.\n",
+        "<br>Finalmente, el principal objetivo de este experimento es lograr que l@s estudiantes dimensionen la enorme variabilidad del error de medición de la ganancia de un árbol de decisión al realizar una partición <training, testing>,  contener la sorpresa de los estudiantes, descartar a la simple particion <training, testing> como método,  y construir en conjunto una solucion natural al problema."
+      ],
+      "metadata": {
+        "id": "84Pnj9gVwpXB"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## 1.2 Introduccion"
+      ],
+      "metadata": {
+        "id": "L9Cn0WThw37Y"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "![Particiohn Training/Testing](https://storage.googleapis.com/open-courses/austral2025-af91/labo1r/C2_E1_particion.jpg)"
+      ],
+      "metadata": {
+        "id": "ZELZ0R4itUVG"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "![Dos tipos de error](https://storage.googleapis.com/open-courses/austral2025-af91/labo1r/C2_E1_target.jpg)"
+      ],
+      "metadata": {
+        "id": "Wtc1ho58xLk-"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## 1.3  Bibliografía\n",
+        "\n",
+        "Demšar, J. [Statistical comparisons of classifiers over multiple data sets](https://www.jmlr.org/papers/volume7/demsar06a/demsar06a.pdf) J. Mach. Learn. Res. 7, 1–30 (2006).   \n",
+        "Starmer, J. [Machine Learning Fundamentals: Cross Validation](https://www.youtube.com/watch?v=fSytzGwwBVw)Machine Learning Fundamentals: Cross Validation, StatQuest with Josh Starmer youtube channel, (2018)\n",
+        "Hastie, T.[The elements of statistical learning: data mining, inference, and prediction](https://hastie.su.domains/Papers/ESLII.pdf) , volume 2. Springer, 2009  ( Chapter 7 Model Assessment and Selection )"
+      ],
+      "metadata": {
+        "id": "oRWtRV34xZRT"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## 1.4 Codigo"
+      ],
+      "metadata": {
+        "id": "VcgTQ2-Pyb8q"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "Esta parte se debe correr con el runtime en lenguaje **R** Ir al menu, Runtime -> Change Runtime Tipe -> Runtime type -> R"
+      ],
+      "metadata": {
+        "id": "SBXPU-_tabMb"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "limpio el ambiente de R"
+      ],
+      "metadata": {
+        "id": "SE94XRhWsxkX"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# limpio la memoria\n",
+        "rm(list=ls(all.names=TRUE)) # remove all objects\n",
+        "gc(full=TRUE, verbose=FALSE) # garbage collection"
+      ],
+      "metadata": {
+        "id": "oZG_4br6szlT",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 129
+        },
+        "outputId": "e248aa47-6ad4-4970-dd36-a6de62f7ba11"
+      },
+      "execution_count": 3,
+      "outputs": [
+        {
+          "output_type": "display_data",
+          "data": {
+            "text/html": [
+              "<table class=\"dataframe\">\n",
+              "<caption>A matrix: 2 × 6 of type dbl</caption>\n",
+              "<thead>\n",
+              "\t<tr><th></th><th scope=col>used</th><th scope=col>(Mb)</th><th scope=col>gc trigger</th><th scope=col>(Mb)</th><th scope=col>max used</th><th scope=col>(Mb)</th></tr>\n",
+              "</thead>\n",
+              "<tbody>\n",
+              "\t<tr><th scope=row>Ncells</th><td> 724384</td><td>38.7</td><td>  1454471</td><td>  77.7</td><td>  1454471</td><td>  77.7</td></tr>\n",
+              "\t<tr><th scope=row>Vcells</th><td>1418989</td><td>10.9</td><td>169515428</td><td>1293.4</td><td>211569306</td><td>1614.2</td></tr>\n",
+              "</tbody>\n",
+              "</table>\n"
+            ],
+            "text/markdown": "\nA matrix: 2 × 6 of type dbl\n\n| <!--/--> | used | (Mb) | gc trigger | (Mb) | max used | (Mb) |\n|---|---|---|---|---|---|---|\n| Ncells |  724384 | 38.7 |   1454471 |   77.7 |   1454471 |   77.7 |\n| Vcells | 1418989 | 10.9 | 169515428 | 1293.4 | 211569306 | 1614.2 |\n\n",
+            "text/latex": "A matrix: 2 × 6 of type dbl\n\\begin{tabular}{r|llllll}\n  & used & (Mb) & gc trigger & (Mb) & max used & (Mb)\\\\\n\\hline\n\tNcells &  724384 & 38.7 &   1454471 &   77.7 &   1454471 &   77.7\\\\\n\tVcells & 1418989 & 10.9 & 169515428 & 1293.4 & 211569306 & 1614.2\\\\\n\\end{tabular}\n",
+            "text/plain": [
+              "       used    (Mb) gc trigger (Mb)   max used  (Mb)  \n",
+              "Ncells  724384 38.7   1454471    77.7   1454471   77.7\n",
+              "Vcells 1418989 10.9 169515428  1293.4 211569306 1614.2"
+            ]
+          },
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "Sys.time()"
+      ],
+      "metadata": {
+        "id": "pJ8SsVA5ssnf",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 34
+        },
+        "outputId": "2a3868d2-d0f4-4c3f-ce39-e24a7428f569"
+      },
+      "execution_count": 4,
+      "outputs": [
+        {
+          "output_type": "display_data",
+          "data": {
+            "text/plain": [
+              "[1] \"2025-08-21 23:15:52 UTC\""
+            ]
+          },
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "* Instalacion de la libreria  rpart.plot  para dibujar el arbol\n",
+        "* invocacion de las librerias  **data.table** y  **rpart**"
+      ],
+      "metadata": {
+        "id": "3BrrQ47PeEb2"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# cargo las librerias que necesito\n",
+        "require(\"data.table\")\n",
+        "require(\"rpart\")"
+      ],
+      "metadata": {
+        "id": "SxO-0Ql0khn6",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "1aa9b89e-c703-432e-bf1b-653b93f17c0d"
+      },
+      "execution_count": 5,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stderr",
+          "text": [
+            "Loading required package: rpart\n",
+            "\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "if(!require(\"R.utils\")) install.packages(\"R.utils\")\n",
+        "require(\"R.utils\")"
+      ],
+      "metadata": {
+        "id": "aM5cS4BRX2qr",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "34ab1002-cc2c-4e5d-da0e-4f53117e642e"
+      },
+      "execution_count": 6,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stderr",
+          "text": [
+            "Loading required package: R.utils\n",
+            "\n",
+            "Warning message in library(package, lib.loc = lib.loc, character.only = TRUE, logical.return = TRUE, :\n",
+            "“there is no package called ‘R.utils’”\n",
+            "Installing package into ‘/usr/local/lib/R/site-library’\n",
+            "(as ‘lib’ is unspecified)\n",
+            "\n",
+            "also installing the dependencies ‘R.oo’, ‘R.methodsS3’\n",
+            "\n",
+            "\n",
+            "Loading required package: R.utils\n",
+            "\n",
+            "Loading required package: R.oo\n",
+            "\n",
+            "Loading required package: R.methodsS3\n",
+            "\n",
+            "R.methodsS3 v1.8.2 (2022-06-13 22:00:14 UTC) successfully loaded. See ?R.methodsS3 for help.\n",
+            "\n",
+            "R.oo v1.27.1 (2025-05-02 21:00:05 UTC) successfully loaded. See ?R.oo for help.\n",
+            "\n",
+            "\n",
+            "Attaching package: ‘R.oo’\n",
+            "\n",
+            "\n",
+            "The following object is masked from ‘package:R.methodsS3’:\n",
+            "\n",
+            "    throw\n",
+            "\n",
+            "\n",
+            "The following objects are masked from ‘package:methods’:\n",
+            "\n",
+            "    getClasses, getMethods\n",
+            "\n",
+            "\n",
+            "The following objects are masked from ‘package:base’:\n",
+            "\n",
+            "    attach, detach, load, save\n",
+            "\n",
+            "\n",
+            "R.utils v2.13.0 (2025-02-24 21:20:02 UTC) successfully loaded. See ?R.utils for help.\n",
+            "\n",
+            "\n",
+            "Attaching package: ‘R.utils’\n",
+            "\n",
+            "\n",
+            "The following object is masked from ‘package:utils’:\n",
+            "\n",
+            "    timestamp\n",
+            "\n",
+            "\n",
+            "The following objects are masked from ‘package:base’:\n",
+            "\n",
+            "    cat, commandArgs, getOption, isOpen, nullfile, parse, use, warnings\n",
+            "\n",
+            "\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "###  Accion a Realizar\n",
+        "PARAM$semilla  debe tener su primer semilla aleatoria"
+      ],
+      "metadata": {
+        "id": "ZG9fCnZh3bWV"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "PARAM <- list()\n",
+        "PARAM$semilla <- 254881  # aqui debe ir su primer semilla\n",
+        "PARAM$training_pct <- 70L  # entre  1L y 99L\n",
+        "\n",
+        "PARAM$rpart <- list (\n",
+        "  \"cp\" = -1, # complejidad minima\n",
+        "  \"minsplit\" = 170, # minima cantidad de regs en un nodo para hacer el split\n",
+        "  \"minbucket\" = 70, # minima cantidad de regs en una hoja\n",
+        "  \"maxdepth\" = 7 # profundidad máxima del arbol\n",
+        ")\n"
+      ],
+      "metadata": {
+        "id": "0nx5_OcE3Y9c"
+      },
+      "execution_count": 23,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# particionar agrega una columna llamada fold a un dataset\n",
+        "#  que consiste en una particion estratificada segun agrupa\n",
+        "\n",
+        "# particionar( data=dataset, division=c(70,30),\n",
+        "#  agrupa=clase_ternaria, seed=semilla)   crea una particion 70, 30\n",
+        "\n",
+        "particionar <- function(\n",
+        "    data, division, agrupa = \"\",\n",
+        "    campo = \"fold\", start = 1, seed = NA) {\n",
+        "  if (!is.na(seed)) set.seed(seed)\n",
+        "\n",
+        "  bloque <- unlist(mapply(function(x, y) {\n",
+        "    rep(y, x)\n",
+        "  }, division, seq(from = start, length.out = length(division))))\n",
+        "\n",
+        "  data[, (campo) := sample(rep(bloque, ceiling(.N / length(bloque))))[1:.N],\n",
+        "    by = agrupa\n",
+        "  ]\n",
+        "}\n"
+      ],
+      "metadata": {
+        "id": "8HLE9Dx80gjH"
+      },
+      "execution_count": 24,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# carpeta de trabajo\n",
+        "setwd(\"/content/buckets/b1/exp\")\n",
+        "experimento <- \"exp0201\"\n",
+        "dir.create(experimento, showWarnings=FALSE)\n",
+        "setwd( paste0(\"/content/buckets/b1/exp/\", experimento ))"
+      ],
+      "metadata": {
+        "id": "sC4_nqcm0nUs"
+      },
+      "execution_count": 25,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# lectura del dataset\n",
+        "dataset <- fread(\"/content/datasets/competencia_01.csv.gz\")\n",
+        "nrow(dataset)"
+      ],
+      "metadata": {
+        "id": "6yIEsZOw07q8",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 34
+        },
+        "outputId": "1d9bd191-e8c0-4b65-be78-60d3988cc04c"
+      },
+      "execution_count": 26,
+      "outputs": [
+        {
+          "output_type": "display_data",
+          "data": {
+            "text/html": [
+              "978439"
+            ],
+            "text/markdown": "978439",
+            "text/latex": "978439",
+            "text/plain": [
+              "[1] 978439"
+            ]
+          },
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# trabajo solo con los datos de 202104, ultimo mes con clase_ternaria completa\n",
+        "# filtro datos\n",
+        "dataset <- dataset[foto_mes==202104]\n",
+        "\n",
+        "invisible(gc(full=TRUE, verbose=FALSE)) # garbage collection\n",
+        "\n",
+        "nrow(dataset)\n",
+        "dataset[, .N, clase_ternaria]"
+      ],
+      "metadata": {
+        "id": "aG02EmUuZNLs",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 209
+        },
+        "outputId": "53154ce4-995e-4983-d7fd-91d281a44edf"
+      },
+      "execution_count": 27,
+      "outputs": [
+        {
+          "output_type": "display_data",
+          "data": {
+            "text/html": [
+              "163418"
+            ],
+            "text/markdown": "163418",
+            "text/latex": "163418",
+            "text/plain": [
+              "[1] 163418"
+            ]
+          },
+          "metadata": {}
+        },
+        {
+          "output_type": "display_data",
+          "data": {
+            "text/html": [
+              "<table class=\"dataframe\">\n",
+              "<caption>A data.table: 3 × 2</caption>\n",
+              "<thead>\n",
+              "\t<tr><th scope=col>clase_ternaria</th><th scope=col>N</th></tr>\n",
+              "\t<tr><th scope=col>&lt;chr&gt;</th><th scope=col>&lt;int&gt;</th></tr>\n",
+              "</thead>\n",
+              "<tbody>\n",
+              "\t<tr><td>CONTINUA</td><td>161333</td></tr>\n",
+              "\t<tr><td>BAJA+1  </td><td>   955</td></tr>\n",
+              "\t<tr><td>BAJA+2  </td><td>  1130</td></tr>\n",
+              "</tbody>\n",
+              "</table>\n"
+            ],
+            "text/markdown": "\nA data.table: 3 × 2\n\n| clase_ternaria &lt;chr&gt; | N &lt;int&gt; |\n|---|---|\n| CONTINUA | 161333 |\n| BAJA+1   |    955 |\n| BAJA+2   |   1130 |\n\n",
+            "text/latex": "A data.table: 3 × 2\n\\begin{tabular}{ll}\n clase\\_ternaria & N\\\\\n <chr> & <int>\\\\\n\\hline\n\t CONTINUA & 161333\\\\\n\t BAJA+1   &    955\\\\\n\t BAJA+2   &   1130\\\\\n\\end{tabular}\n",
+            "text/plain": [
+              "  clase_ternaria N     \n",
+              "1 CONTINUA       161333\n",
+              "2 BAJA+1            955\n",
+              "3 BAJA+2           1130"
+            ]
+          },
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# particiono estratificadamente el dataset 70%, 30%\n",
+        "particionar(dataset,\n",
+        "  division = c(PARAM$training_pct, 100L -PARAM$training_pct),\n",
+        "  agrupa = \"clase_ternaria\",\n",
+        "  seed = PARAM$semilla # aqui se usa SU semilla\n",
+        ")"
+      ],
+      "metadata": {
+        "id": "FAO1Hhd52b5d"
+      },
+      "execution_count": 28,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# genero el modelo\n",
+        "# quiero predecir clase_ternaria a partir del resto\n",
+        "# fold==1  es training,  el 70% de los datos\n",
+        "modelo <- rpart(\"clase_ternaria ~ .\",\n",
+        "  data= dataset[fold == 1],  # fold==1  es training, el 70% de los datos\n",
+        "  xval= 0,\n",
+        "  control= PARAM$rpart # aqui van los parametros\n",
+        ")\n"
+      ],
+      "metadata": {
+        "id": "s3UnHSLP2gN6"
+      },
+      "execution_count": 29,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# aplico el modelo a los datos de testing\n",
+        "prediccion <- predict(modelo, # el modelo que genere recien\n",
+        "  dataset[fold == 2], # fold==2  es testing, el 30% de los datos\n",
+        "  type= \"prob\"\n",
+        ") # type= \"prob\"  es que devuelva la probabilidad\n"
+      ],
+      "metadata": {
+        "id": "paQphV4A2jGz"
+      },
+      "execution_count": 30,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "tb_prediccion <- as.data.table(list(\n",
+        "  \"clase_ternaria\"=dataset[fold == 2, clase_ternaria],\n",
+        "  \"prob\"= prediccion[, \"BAJA+2\"]\n",
+        "))"
+      ],
+      "metadata": {
+        "id": "fuLZ75pA29dT"
+      },
+      "execution_count": 31,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# calculo la ganancia de cada registro\n",
+        "tb_prediccion[, ganancia := ifelse(clase_ternaria == \"BAJA+2\", 780000, -20000)]"
+      ],
+      "metadata": {
+        "id": "LuG6ql_t3kOI"
+      },
+      "execution_count": 32,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# calculo la clase\n",
+        "tb_prediccion[, Predicted := prob > (1/40) ]"
+      ],
+      "metadata": {
+        "id": "xJ3WTMez3leO"
+      },
+      "execution_count": 33,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "ganancia_test <-  tb_prediccion[ Predicted==TRUE,  sum(ganancia)]"
+      ],
+      "metadata": {
+        "id": "cFQPacen4Wq6"
+      },
+      "execution_count": 34,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# normalizo la ganancia\n",
+        "ganancia_test_normalizada <- ganancia_test / (( 100 - PARAM$training_pct ) / 100 )"
+      ],
+      "metadata": {
+        "id": "dHjz0zhN4-nZ"
+      },
+      "execution_count": 35,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "estimulos <- tb_prediccion[ Predicted==TRUE, .N]\n",
+        "aciertos <- tb_prediccion[ Predicted & clase_ternaria == \"BAJA+2\", .N]\n"
+      ],
+      "metadata": {
+        "id": "D7RUdTb95F6B"
+      },
+      "execution_count": 36,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Resultado Final\n",
+        "cat(\"Testing total: \", dataset[fold == 2, .N], \"\\n\")\n",
+        "cat(\"Testing BAJA+2: \", dataset[fold == 2 & clase_ternaria == \"BAJA+2\", .N], \"\\n\")\n",
+        "\n",
+        "cat(\"Estimulos: \", estimulos, \"\\n\")\n",
+        "cat(\"Aciertos (BAJA+2): \", aciertos, \"\\n\")\n",
+        "\n",
+        "cat(\"Ganancia en testing (normalizada): \", ganancia_test_normalizada, \"\\n\")\n"
+      ],
+      "metadata": {
+        "id": "Lu1KM6fy5U7h",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "2e0500df-4fd3-4593-aef1-d75114fb38be"
+      },
+      "execution_count": 37,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Testing total:  49032 \n",
+            "Testing BAJA+2:  339 \n",
+            "Estimulos:  2939 \n",
+            "Aciertos (BAJA+2):  172 \n",
+            "Ganancia en testing (normalizada):  262733333 \n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "### Acciones a realizar\n",
+        "* Reportar la  *Ganancia en testing (normalizada)* <br> en la planilla colaborativa hoja  **C2-1sem**\n",
+        "* Se discutirá en clase la variabilidad de las ganancias obtenidas de distintos alumnos"
+      ],
+      "metadata": {
+        "id": "kHs-YoFB5rUa"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "\n",
+        "\n",
+        "---\n",
+        "\n"
+      ],
+      "metadata": {
+        "id": "LBl_eIeO7WuM"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "# 2  Medición Monte Carlo Cross Validation\n",
+        "## Clase 02  Experimento 2"
+      ],
+      "metadata": {
+        "id": "h43UCq9y7UlT"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## 2.1  Objetivos\n",
+        "Mostrar el funcionamiento de la Montecarlo Cross Validation y que l@s estudiantes aprecien la disminución de la varianza de dicha metodología.\n",
+        "Relación con el Teorema Central del Límite"
+      ],
+      "metadata": {
+        "id": "wHPchGXK80VU"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## 2.2 Introduccion\n",
+        "\n",
+        "![Montecarlo](https://storage.googleapis.com/open-courses/austral2025-af91/labo1r/C2_E2_montecarlo.jpg)\n",
+        "\n",
+        "![Curva normal](https://storage.googleapis.com/open-courses/austral2025-af91/labo1r/C2_E2_normal.jpg)\n",
+        "\n",
+        "![Teorema Central del Limite](https://storage.googleapis.com/open-courses/austral2025-af91/labo1r/C2_E2_teoremacentralLimite.jpg)\n",
+        "\n"
+      ],
+      "metadata": {
+        "id": "g6YzACxl9DzS"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [],
+      "metadata": {
+        "id": "7laod2t4ArsH"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## 2.3  Bibliografía\n",
+        "\n",
+        "Demšar, J. [Statistical comparisons of classifiers over multiple data sets](https://www.jmlr.org/papers/volume7/demsar06a/demsar06a.pdf) J. Mach. Learn. Res. 7, 1–30 (2006).   \n",
+        "Starmer, J. [Machine Learning Fundamentals: Cross Validation](https://www.youtube.com/watch?v=fSytzGwwBVw)Machine Learning Fundamentals: Cross Validation, StatQuest with Josh Starmer youtube channel, (2018)\n",
+        "Hastie, T.[The elements of statistical learning: data mining, inference, and prediction](https://hastie.su.domains/Papers/ESLII.pdf) , volume 2. Springer, 2009  ( Chapter 7 Model Assessment and Selection )"
+      ],
+      "metadata": {
+        "id": "lFcJeRAkAr-q"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [],
+      "metadata": {
+        "id": "KXSuYXQ26cLV"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## 2.4 Codigo  Montecarlo"
+      ],
+      "metadata": {
+        "id": "0ztZzYolA2WK"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "El código de la Montecarlo Cross Validation es notablemente más complejo que el anterior de una simple partición training/testing\n",
+        "<br> Se crea la funcion ArbolEstimarGanancia()  que dada una semilla realiza la partición  training/testing, entrena en training, aplica el modelo a testing, y se calculan las ganancias\n",
+        "<br> Se utiliza la funcion **mcmapply**  de R para aplicar ArbolEstimarGanancia a todos los elementos del vector de semillas"
+      ],
+      "metadata": {
+        "id": "KLa06ZsiC-Oz"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "Esta parte se debe correr con el runtime en lenguaje **R** Ir al menu, Runtime -> Change Runtime Tipe -> Runtime type -> R"
+      ],
+      "metadata": {
+        "id": "ivFiBBOQA2Ws"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "limpio el ambiente de R"
+      ],
+      "metadata": {
+        "id": "TMSAQDXuA2Ws"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# limpio la memoria\n",
+        "rm(list=ls(all.names=TRUE)) # remove all objects\n",
+        "gc(full=TRUE, verbose=FALSE) # garbage collection"
+      ],
+      "metadata": {
+        "id": "eakzb8y2A2Wt",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 129
+        },
+        "outputId": "35280751-80ec-4b2d-f1e3-290534f455ef"
+      },
+      "execution_count": 38,
+      "outputs": [
+        {
+          "output_type": "display_data",
+          "data": {
+            "text/html": [
+              "<table class=\"dataframe\">\n",
+              "<caption>A matrix: 2 × 6 of type dbl</caption>\n",
+              "<thead>\n",
+              "\t<tr><th></th><th scope=col>used</th><th scope=col>(Mb)</th><th scope=col>gc trigger</th><th scope=col>(Mb)</th><th scope=col>max used</th><th scope=col>(Mb)</th></tr>\n",
+              "</thead>\n",
+              "<tbody>\n",
+              "\t<tr><th scope=row>Ncells</th><td> 825509</td><td>44.1</td><td>  1454471</td><td>  77.7</td><td>  1454471</td><td>  77.7</td></tr>\n",
+              "\t<tr><th scope=row>Vcells</th><td>1574355</td><td>12.1</td><td>149424272</td><td>1140.1</td><td>232879326</td><td>1776.8</td></tr>\n",
+              "</tbody>\n",
+              "</table>\n"
+            ],
+            "text/markdown": "\nA matrix: 2 × 6 of type dbl\n\n| <!--/--> | used | (Mb) | gc trigger | (Mb) | max used | (Mb) |\n|---|---|---|---|---|---|---|\n| Ncells |  825509 | 44.1 |   1454471 |   77.7 |   1454471 |   77.7 |\n| Vcells | 1574355 | 12.1 | 149424272 | 1140.1 | 232879326 | 1776.8 |\n\n",
+            "text/latex": "A matrix: 2 × 6 of type dbl\n\\begin{tabular}{r|llllll}\n  & used & (Mb) & gc trigger & (Mb) & max used & (Mb)\\\\\n\\hline\n\tNcells &  825509 & 44.1 &   1454471 &   77.7 &   1454471 &   77.7\\\\\n\tVcells & 1574355 & 12.1 & 149424272 & 1140.1 & 232879326 & 1776.8\\\\\n\\end{tabular}\n",
+            "text/plain": [
+              "       used    (Mb) gc trigger (Mb)   max used  (Mb)  \n",
+              "Ncells  825509 44.1   1454471    77.7   1454471   77.7\n",
+              "Vcells 1574355 12.1 149424272  1140.1 232879326 1776.8"
+            ]
+          },
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "* Instalacion de la libreria  rpart.plot  para dibujar el arbol\n",
+        "* invocacion de las librerias  **data.table** y  **rpart**"
+      ],
+      "metadata": {
+        "id": "559RkeYZA2Wv"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# cargo las librerias que necesito\n",
+        "require(\"data.table\")\n",
+        "require(\"rpart\")\n",
+        "require(\"parallel\")"
+      ],
+      "metadata": {
+        "id": "yf_S_HlsA2Wv",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "2d7b4bbf-3a6d-4023-9378-f227e73bf13b"
+      },
+      "execution_count": 39,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stderr",
+          "text": [
+            "Loading required package: parallel\n",
+            "\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "if(!require(\"R.utils\")) install.packages(\"R.utils\")\n",
+        "require(\"R.utils\")"
+      ],
+      "metadata": {
+        "id": "XJ7778QOeGdZ"
+      },
+      "execution_count": 40,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "###  Accion a Realizar\n",
+        "PARAM$semillas  debe tener sus cinco semillas aleatorias"
+      ],
+      "metadata": {
+        "id": "a4oz2ulCA2Ww"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "PARAM <- list()\n",
+        "PARAM$semillas <- c(111119, 111121, 599999, 666667, 888887)  # aqui debe ir sus CINCO\n",
+        "PARAM$training_pct <- 70L  # entre  1L y 99L\n",
+        "\n",
+        "PARAM$rpart <- list (\n",
+        "  \"cp\" = -1, # complejidad minima\n",
+        "  \"minsplit\" = 170, # minima cantidad de regs en un nodo para hacer el split\n",
+        "  \"minbucket\" = 70, # minima cantidad de regs en una hoja\n",
+        "  \"maxdepth\" = 7 # profundidad máxima del arbol\n",
+        ")\n"
+      ],
+      "metadata": {
+        "id": "yQ2OAP5AA2Wx"
+      },
+      "execution_count": 41,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# particionar agrega una columna llamada fold a un dataset\n",
+        "#  que consiste en una particion estratificada segun agrupa\n",
+        "\n",
+        "# particionar( data=dataset, division=c(70,30),\n",
+        "#  agrupa=clase_ternaria, seed=semilla)   crea una particion 70, 30\n",
+        "\n",
+        "particionar <- function(\n",
+        "    data, division, agrupa = \"\",\n",
+        "    campo = \"fold\", start = 1, seed = NA) {\n",
+        "  if (!is.na(seed)) set.seed(seed)\n",
+        "\n",
+        "  bloque <- unlist(mapply(function(x, y) {\n",
+        "    rep(y, x)\n",
+        "  }, division, seq(from = start, length.out = length(division))))\n",
+        "\n",
+        "  data[, (campo) := sample(rep(bloque, ceiling(.N / length(bloque))))[1:.N],\n",
+        "    by = agrupa\n",
+        "  ]\n",
+        "}\n"
+      ],
+      "metadata": {
+        "id": "97dMCVJWA2Wy"
+      },
+      "execution_count": 42,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "\n",
+        "ArbolEstimarGanancia <- function(semilla, param_basicos) {\n",
+        "  # particiono estratificadamente el dataset\n",
+        "  particionar(dataset,\n",
+        "    division = c(param_basicos$training_pct, 100L -param_basicos$training_pct),\n",
+        "    agrupa = \"clase_ternaria\",\n",
+        "    seed = semilla # aqui se usa SU semilla\n",
+        "  )\n",
+        "\n",
+        "  # genero el modelo\n",
+        "  # predecir clase_ternaria a partir del resto\n",
+        "  modelo <- rpart(\"clase_ternaria ~ .\",\n",
+        "    data= dataset[fold == 1], # fold==1  es training,  el 70% de los datos\n",
+        "    xval= 0,\n",
+        "    control= param_basicos$rpart\n",
+        "  ) # aqui van los parametros del arbol\n",
+        "\n",
+        "  # aplico el modelo a los datos de testing\n",
+        "  prediccion <- predict(modelo, # el modelo que genere recien\n",
+        "    dataset[fold == 2], # fold==2  es testing, el 30% de los datos\n",
+        "    type= \"prob\"\n",
+        "  ) # type= \"prob\"  es que devuelva la probabilidad\n",
+        "\n",
+        "  # prediccion es una matriz con TRES columnas,\n",
+        "  #  llamadas \"BAJA+1\", \"BAJA+2\"  y \"CONTINUA\"\n",
+        "  # cada columna es el vector de probabilidades\n",
+        "\n",
+        "\n",
+        "  # calculo la ganancia en testing  qu es fold==2\n",
+        "  ganancia_test <- dataset[\n",
+        "    fold== 2,\n",
+        "    sum(ifelse(prediccion[, \"BAJA+2\"] > 0.025,\n",
+        "      ifelse(clase_ternaria == \"BAJA+2\", 780000, -20000),\n",
+        "      0\n",
+        "    ))\n",
+        "  ]\n",
+        "\n",
+        "  # escalo la ganancia como si fuera todo el dataset\n",
+        "  ganancia_test_normalizada <- ganancia_test / (( 100 - PARAM$training_pct ) / 100 )\n",
+        "\n",
+        "  return(list(\n",
+        "    \"semilla\" = semilla,\n",
+        "    \"testing\" = dataset[fold == 2, .N],\n",
+        "    \"testing_pos\" = dataset[fold == 2 & clase_ternaria == \"BAJA+2\", .N],\n",
+        "    \"envios\" = dataset[fold == 2, sum(prediccion[, \"BAJA+2\"] > 0.025)],\n",
+        "    \"aciertos\" = dataset[\n",
+        "        fold == 2,\n",
+        "        sum(prediccion[, \"BAJA+2\"] > 0.025 & clase_ternaria == \"BAJA+2\")\n",
+        "    ],\n",
+        "    \"ganancia_test\" = ganancia_test_normalizada\n",
+        "  ))\n",
+        "}\n"
+      ],
+      "metadata": {
+        "id": "GroZSZoVBuZ5"
+      },
+      "execution_count": 43,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# carpeta de trabajo\n",
+        "setwd(\"/content/buckets/b1/exp\")\n",
+        "experimento <- \"exp0202\"\n",
+        "dir.create(experimento, showWarnings=FALSE)\n",
+        "setwd( paste0(\"/content/buckets/b1/exp/\", experimento ))"
+      ],
+      "metadata": {
+        "id": "dJIBIX6kA2Wy"
+      },
+      "execution_count": 44,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "dataset <- fread(\"/content/datasets/competencia_01.csv.gz\")\n",
+        "nrow(dataset)"
+      ],
+      "metadata": {
+        "id": "tKiACdU2A2Wz",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 34
+        },
+        "outputId": "d76c3592-c543-4aab-9f90-46c358d27fa9"
+      },
+      "execution_count": 45,
+      "outputs": [
+        {
+          "output_type": "display_data",
+          "data": {
+            "text/html": [
+              "978439"
+            ],
+            "text/markdown": "978439",
+            "text/latex": "978439",
+            "text/plain": [
+              "[1] 978439"
+            ]
+          },
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# trabajo solo con los datos de 202104, ultimo mes con clase_ternaria completa\n",
+        "# filtro datos\n",
+        "dataset <- dataset[foto_mes==202104]\n",
+        "\n",
+        "invisible(gc(full=TRUE, verbose=FALSE)) # garbage collection\n",
+        "\n",
+        "nrow(dataset)\n",
+        "dataset[, .N, list(foto_mes,clase_ternaria)]"
+      ],
+      "metadata": {
+        "id": "8tzLsVAoehoW",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 209
+        },
+        "outputId": "18f50b99-22c4-4218-ab49-ee407e63e899"
+      },
+      "execution_count": 46,
+      "outputs": [
+        {
+          "output_type": "display_data",
+          "data": {
+            "text/html": [
+              "163418"
+            ],
+            "text/markdown": "163418",
+            "text/latex": "163418",
+            "text/plain": [
+              "[1] 163418"
+            ]
+          },
+          "metadata": {}
+        },
+        {
+          "output_type": "display_data",
+          "data": {
+            "text/html": [
+              "<table class=\"dataframe\">\n",
+              "<caption>A data.table: 3 × 3</caption>\n",
+              "<thead>\n",
+              "\t<tr><th scope=col>foto_mes</th><th scope=col>clase_ternaria</th><th scope=col>N</th></tr>\n",
+              "\t<tr><th scope=col>&lt;int&gt;</th><th scope=col>&lt;chr&gt;</th><th scope=col>&lt;int&gt;</th></tr>\n",
+              "</thead>\n",
+              "<tbody>\n",
+              "\t<tr><td>202104</td><td>CONTINUA</td><td>161333</td></tr>\n",
+              "\t<tr><td>202104</td><td>BAJA+1  </td><td>   955</td></tr>\n",
+              "\t<tr><td>202104</td><td>BAJA+2  </td><td>  1130</td></tr>\n",
+              "</tbody>\n",
+              "</table>\n"
+            ],
+            "text/markdown": "\nA data.table: 3 × 3\n\n| foto_mes &lt;int&gt; | clase_ternaria &lt;chr&gt; | N &lt;int&gt; |\n|---|---|---|\n| 202104 | CONTINUA | 161333 |\n| 202104 | BAJA+1   |    955 |\n| 202104 | BAJA+2   |   1130 |\n\n",
+            "text/latex": "A data.table: 3 × 3\n\\begin{tabular}{lll}\n foto\\_mes & clase\\_ternaria & N\\\\\n <int> & <chr> & <int>\\\\\n\\hline\n\t 202104 & CONTINUA & 161333\\\\\n\t 202104 & BAJA+1   &    955\\\\\n\t 202104 & BAJA+2   &   1130\\\\\n\\end{tabular}\n",
+            "text/plain": [
+              "  foto_mes clase_ternaria N     \n",
+              "1 202104   CONTINUA       161333\n",
+              "2 202104   BAJA+1            955\n",
+              "3 202104   BAJA+2           1130"
+            ]
+          },
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "\n",
+        "# la funcion mcmapply  llama a la funcion ArbolEstimarGanancia\n",
+        "#  tantas veces como valores tenga el vector  PARAM$semillas\n",
+        "salidas <- mcmapply(ArbolEstimarGanancia,\n",
+        "  PARAM$semillas, # paso el vector de semillas\n",
+        "  MoreArgs = list(PARAM), # aqui paso el segundo parametro\n",
+        "  SIMPLIFY = FALSE,\n",
+        "  mc.cores = detectCores()\n",
+        ")\n",
+        "\n",
+        "# muestro la lista de las salidas en testing\n",
+        "#  para la particion realizada con cada semilla\n",
+        "salidas\n"
+      ],
+      "metadata": {
+        "id": "64OdfeyxCMDF",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 1000
+        },
+        "outputId": "96e66dc2-0a96-49d5-c8e5-7f3526661f0f"
+      },
+      "execution_count": 47,
+      "outputs": [
+        {
+          "output_type": "display_data",
+          "data": {
+            "text/html": [
+              "<ol>\n",
+              "\t<li><dl>\n",
+              "\t<dt>$semilla</dt>\n",
+              "\t\t<dd>111119</dd>\n",
+              "\t<dt>$testing</dt>\n",
+              "\t\t<dd>49033</dd>\n",
+              "\t<dt>$testing_pos</dt>\n",
+              "\t\t<dd>343</dd>\n",
+              "\t<dt>$envios</dt>\n",
+              "\t\t<dd>3069</dd>\n",
+              "\t<dt>$aciertos</dt>\n",
+              "\t\t<dd>195</dd>\n",
+              "\t<dt>$ganancia_test</dt>\n",
+              "\t\t<dd>315400000</dd>\n",
+              "</dl>\n",
+              "</li>\n",
+              "\t<li><dl>\n",
+              "\t<dt>$semilla</dt>\n",
+              "\t\t<dd>111121</dd>\n",
+              "\t<dt>$testing</dt>\n",
+              "\t\t<dd>49026</dd>\n",
+              "\t<dt>$testing_pos</dt>\n",
+              "\t\t<dd>340</dd>\n",
+              "\t<dt>$envios</dt>\n",
+              "\t\t<dd>3697</dd>\n",
+              "\t<dt>$aciertos</dt>\n",
+              "\t\t<dd>208</dd>\n",
+              "\t<dt>$ganancia_test</dt>\n",
+              "\t\t<dd>308200000</dd>\n",
+              "</dl>\n",
+              "</li>\n",
+              "\t<li><dl>\n",
+              "\t<dt>$semilla</dt>\n",
+              "\t\t<dd>599999</dd>\n",
+              "\t<dt>$testing</dt>\n",
+              "\t\t<dd>49035</dd>\n",
+              "\t<dt>$testing_pos</dt>\n",
+              "\t\t<dd>343</dd>\n",
+              "\t<dt>$envios</dt>\n",
+              "\t\t<dd>3690</dd>\n",
+              "\t<dt>$aciertos</dt>\n",
+              "\t\t<dd>210</dd>\n",
+              "\t<dt>$ganancia_test</dt>\n",
+              "\t\t<dd>3.14e+08</dd>\n",
+              "</dl>\n",
+              "</li>\n",
+              "\t<li><dl>\n",
+              "\t<dt>$semilla</dt>\n",
+              "\t\t<dd>666667</dd>\n",
+              "\t<dt>$testing</dt>\n",
+              "\t\t<dd>49023</dd>\n",
+              "\t<dt>$testing_pos</dt>\n",
+              "\t\t<dd>336</dd>\n",
+              "\t<dt>$envios</dt>\n",
+              "\t\t<dd>3457</dd>\n",
+              "\t<dt>$aciertos</dt>\n",
+              "\t\t<dd>197</dd>\n",
+              "\t<dt>$ganancia_test</dt>\n",
+              "\t\t<dd>294866666.666667</dd>\n",
+              "</dl>\n",
+              "</li>\n",
+              "\t<li><dl>\n",
+              "\t<dt>$semilla</dt>\n",
+              "\t\t<dd>888887</dd>\n",
+              "\t<dt>$testing</dt>\n",
+              "\t\t<dd>49014</dd>\n",
+              "\t<dt>$testing_pos</dt>\n",
+              "\t\t<dd>330</dd>\n",
+              "\t<dt>$envios</dt>\n",
+              "\t\t<dd>2601</dd>\n",
+              "\t<dt>$aciertos</dt>\n",
+              "\t\t<dd>168</dd>\n",
+              "\t<dt>$ganancia_test</dt>\n",
+              "\t\t<dd>274600000</dd>\n",
+              "</dl>\n",
+              "</li>\n",
+              "</ol>\n"
+            ],
+            "text/markdown": "1. $semilla\n:   111119\n$testing\n:   49033\n$testing_pos\n:   343\n$envios\n:   3069\n$aciertos\n:   195\n$ganancia_test\n:   315400000\n\n\n\n2. $semilla\n:   111121\n$testing\n:   49026\n$testing_pos\n:   340\n$envios\n:   3697\n$aciertos\n:   208\n$ganancia_test\n:   308200000\n\n\n\n3. $semilla\n:   599999\n$testing\n:   49035\n$testing_pos\n:   343\n$envios\n:   3690\n$aciertos\n:   210\n$ganancia_test\n:   3.14e+08\n\n\n\n4. $semilla\n:   666667\n$testing\n:   49023\n$testing_pos\n:   336\n$envios\n:   3457\n$aciertos\n:   197\n$ganancia_test\n:   294866666.666667\n\n\n\n5. $semilla\n:   888887\n$testing\n:   49014\n$testing_pos\n:   330\n$envios\n:   2601\n$aciertos\n:   168\n$ganancia_test\n:   274600000\n\n\n\n\n\n",
+            "text/latex": "\\begin{enumerate}\n\\item \\begin{description}\n\\item[\\$semilla] 111119\n\\item[\\$testing] 49033\n\\item[\\$testing\\_pos] 343\n\\item[\\$envios] 3069\n\\item[\\$aciertos] 195\n\\item[\\$ganancia\\_test] 315400000\n\\end{description}\n\n\\item \\begin{description}\n\\item[\\$semilla] 111121\n\\item[\\$testing] 49026\n\\item[\\$testing\\_pos] 340\n\\item[\\$envios] 3697\n\\item[\\$aciertos] 208\n\\item[\\$ganancia\\_test] 308200000\n\\end{description}\n\n\\item \\begin{description}\n\\item[\\$semilla] 599999\n\\item[\\$testing] 49035\n\\item[\\$testing\\_pos] 343\n\\item[\\$envios] 3690\n\\item[\\$aciertos] 210\n\\item[\\$ganancia\\_test] 3.14e+08\n\\end{description}\n\n\\item \\begin{description}\n\\item[\\$semilla] 666667\n\\item[\\$testing] 49023\n\\item[\\$testing\\_pos] 336\n\\item[\\$envios] 3457\n\\item[\\$aciertos] 197\n\\item[\\$ganancia\\_test] 294866666.666667\n\\end{description}\n\n\\item \\begin{description}\n\\item[\\$semilla] 888887\n\\item[\\$testing] 49014\n\\item[\\$testing\\_pos] 330\n\\item[\\$envios] 2601\n\\item[\\$aciertos] 168\n\\item[\\$ganancia\\_test] 274600000\n\\end{description}\n\n\\end{enumerate}\n",
+            "text/plain": [
+              "[[1]]\n",
+              "[[1]]$semilla\n",
+              "[1] 111119\n",
+              "\n",
+              "[[1]]$testing\n",
+              "[1] 49033\n",
+              "\n",
+              "[[1]]$testing_pos\n",
+              "[1] 343\n",
+              "\n",
+              "[[1]]$envios\n",
+              "[1] 3069\n",
+              "\n",
+              "[[1]]$aciertos\n",
+              "[1] 195\n",
+              "\n",
+              "[[1]]$ganancia_test\n",
+              "[1] 315400000\n",
+              "\n",
+              "\n",
+              "[[2]]\n",
+              "[[2]]$semilla\n",
+              "[1] 111121\n",
+              "\n",
+              "[[2]]$testing\n",
+              "[1] 49026\n",
+              "\n",
+              "[[2]]$testing_pos\n",
+              "[1] 340\n",
+              "\n",
+              "[[2]]$envios\n",
+              "[1] 3697\n",
+              "\n",
+              "[[2]]$aciertos\n",
+              "[1] 208\n",
+              "\n",
+              "[[2]]$ganancia_test\n",
+              "[1] 308200000\n",
+              "\n",
+              "\n",
+              "[[3]]\n",
+              "[[3]]$semilla\n",
+              "[1] 599999\n",
+              "\n",
+              "[[3]]$testing\n",
+              "[1] 49035\n",
+              "\n",
+              "[[3]]$testing_pos\n",
+              "[1] 343\n",
+              "\n",
+              "[[3]]$envios\n",
+              "[1] 3690\n",
+              "\n",
+              "[[3]]$aciertos\n",
+              "[1] 210\n",
+              "\n",
+              "[[3]]$ganancia_test\n",
+              "[1] 3.14e+08\n",
+              "\n",
+              "\n",
+              "[[4]]\n",
+              "[[4]]$semilla\n",
+              "[1] 666667\n",
+              "\n",
+              "[[4]]$testing\n",
+              "[1] 49023\n",
+              "\n",
+              "[[4]]$testing_pos\n",
+              "[1] 336\n",
+              "\n",
+              "[[4]]$envios\n",
+              "[1] 3457\n",
+              "\n",
+              "[[4]]$aciertos\n",
+              "[1] 197\n",
+              "\n",
+              "[[4]]$ganancia_test\n",
+              "[1] 294866667\n",
+              "\n",
+              "\n",
+              "[[5]]\n",
+              "[[5]]$semilla\n",
+              "[1] 888887\n",
+              "\n",
+              "[[5]]$testing\n",
+              "[1] 49014\n",
+              "\n",
+              "[[5]]$testing_pos\n",
+              "[1] 330\n",
+              "\n",
+              "[[5]]$envios\n",
+              "[1] 2601\n",
+              "\n",
+              "[[5]]$aciertos\n",
+              "[1] 168\n",
+              "\n",
+              "[[5]]$ganancia_test\n",
+              "[1] 274600000\n",
+              "\n"
+            ]
+          },
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# paso la lista a vector\n",
+        "tb_salida <- rbindlist(salidas)\n",
+        "print( tb_salida)"
+      ],
+      "metadata": {
+        "id": "tML9VmH2ECFK",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "be69ec28-1eea-40cd-e90f-e64162e6055b"
+      },
+      "execution_count": 48,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "   semilla testing testing_pos envios aciertos ganancia_test\n",
+            "     <num>   <int>       <int>  <int>    <int>         <num>\n",
+            "1:  111119   49033         343   3069      195     315400000\n",
+            "2:  111121   49026         340   3697      208     308200000\n",
+            "3:  599999   49035         343   3690      210     314000000\n",
+            "4:  666667   49023         336   3457      197     294866667\n",
+            "5:  888887   49014         330   2601      168     274600000\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "tb_salida$aciertos"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 34
+        },
+        "id": "WAfzodK1BbvI",
+        "outputId": "04adf22f-7665-49eb-f2e6-852bacc6eb84"
+      },
+      "execution_count": 57,
+      "outputs": [
+        {
+          "output_type": "display_data",
+          "data": {
+            "text/html": [
+              "<style>\n",
+              ".list-inline {list-style: none; margin:0; padding: 0}\n",
+              ".list-inline>li {display: inline-block}\n",
+              ".list-inline>li:not(:last-child)::after {content: \"\\00b7\"; padding: 0 .5ex}\n",
+              "</style>\n",
+              "<ol class=list-inline><li>195</li><li>208</li><li>210</li><li>197</li><li>168</li></ol>\n"
+            ],
+            "text/markdown": "1. 195\n2. 208\n3. 210\n4. 197\n5. 168\n\n\n",
+            "text/latex": "\\begin{enumerate*}\n\\item 195\n\\item 208\n\\item 210\n\\item 197\n\\item 168\n\\end{enumerate*}\n",
+            "text/plain": [
+              "[1] 195 208 210 197 168"
+            ]
+          },
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# finalmente calculo la media (promedio)  de las ganancias\n",
+        "cat( \"ganancia promedio: \", tb_salida[, mean(ganancia_test)], \"\\n\" )"
+      ],
+      "metadata": {
+        "id": "rbHXPfoVENQB",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "9c3c5f06-9d27-4938-fa10-641bf599c337"
+      },
+      "execution_count": 49,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "ganancia promedio:  301413333 \n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "### Acciones a realizar\n",
+        "* Reportar la  *Ganancia Promedio* <br> en la planilla colaborativa hoja  **C2-5sem**\n",
+        "* Se discutirá en clase la variabilidad de estos \"ganancia promedio de cinco semillas\""
+      ],
+      "metadata": {
+        "id": "_3xVH6UKA2W6"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "\n",
+        "\n",
+        "---\n",
+        "\n"
+      ],
+      "metadata": {
+        "id": "N29m1XGpA2W7"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "# 3  Generando n semillas en forma automatica\n",
+        "## Clase 02  Experimento 3"
+      ],
+      "metadata": {
+        "id": "zS7WIJciFGc6"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## 3.1  Objetivos\n",
+        "Mostrar la creación de nuevas semillas a partir de la librería Primes"
+      ],
+      "metadata": {
+        "id": "VmiFDDDJFUEo"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "3.2  Código\n",
+        "\n",
+        "Como generar muchas semillas a partir de una"
+      ],
+      "metadata": {
+        "id": "Ehe3VfdfFbvg"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# instalo y cargo la libreria  primes\n",
+        "if (!require(\"primes\")) install.packages(\"primes\")\n",
+        "require(\"primes\")"
+      ],
+      "metadata": {
+        "id": "X6_dE42yF2-t",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "03811461-ed83-4378-c997-d190cb6de22d"
+      },
+      "execution_count": 58,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stderr",
+          "text": [
+            "Loading required package: primes\n",
+            "\n",
+            "Warning message in library(package, lib.loc = lib.loc, character.only = TRUE, logical.return = TRUE, :\n",
+            "“there is no package called ‘primes’”\n",
+            "Installing package into ‘/usr/local/lib/R/site-library’\n",
+            "(as ‘lib’ is unspecified)\n",
+            "\n",
+            "Loading required package: primes\n",
+            "\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# genero numeros primos\n",
+        "primos <- generate_primes(min = 100000, max = 1000000)\n",
+        "\n",
+        "\n",
+        "set.seed(102191) # inicializo con mi primer semilla\n",
+        "\n",
+        "# me quedo con por ejemplo 20 primos al azar\n",
+        "semillas <- sample(primos, 20 )\n",
+        "\n",
+        "print( semillas )"
+      ],
+      "metadata": {
+        "id": "yDU9RyV4FNhZ",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "a6754737-e1d3-441c-879e-0badd9808a29"
+      },
+      "execution_count": 59,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            " [1] 378821 964333 187049 205151 813697 344719 127217 464371 645137 480803\n",
+            "[11] 723319 314641 791599 937577 685649 619363 390539 465887 619657 195737\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "\n",
+        "\n",
+        "---\n",
+        "\n"
+      ],
+      "metadata": {
+        "id": "eD_cO5VTGGea"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [],
+      "metadata": {
+        "id": "k-rgoA2ZFll4"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "# 4  Medición  50-Monte Carlo Cross Validation\n",
+        "## Clase 02  Experimento 4"
+      ],
+      "metadata": {
+        "id": "cZi29THsGil_"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## 4.1  Objetivos\n",
+        "Calcular la ganancia del modelo utilizando 50 semillas nuevas generadas a partir de mi semilla primigenia."
+      ],
+      "metadata": {
+        "id": "qFNq6ntVGimN"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## 4.4 Codigo  50 Montecarlo"
+      ],
+      "metadata": {
+        "id": "B6KtuhQCGimP"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "Esta parte se debe correr con el runtime en lenguaje **R** Ir al menu, Runtime -> Change Runtime Tipe -> Runtime type -> R"
+      ],
+      "metadata": {
+        "id": "LgGgjPQuGimP"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "Este punto demora en correr 60 minutos en Google Colab, con lo cual para continuar con el punto siguiente deberá abrir un nuevo Colab"
+      ],
+      "metadata": {
+        "id": "E82ChuO25OYx"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "limpio el ambiente de R"
+      ],
+      "metadata": {
+        "id": "a6AxqLwOGimQ"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# limpio la memoria\n",
+        "rm(list=ls(all.names=TRUE)) # remove all objects\n",
+        "gc(full=TRUE, verbose=FALSE) # garbage collection"
+      ],
+      "metadata": {
+        "id": "797Ad0_QGimQ",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 129
+        },
+        "outputId": "89b28ce3-0414-4009-ab34-fa33e02942d6"
+      },
+      "execution_count": 60,
+      "outputs": [
+        {
+          "output_type": "display_data",
+          "data": {
+            "text/html": [
+              "<table class=\"dataframe\">\n",
+              "<caption>A matrix: 2 × 6 of type dbl</caption>\n",
+              "<thead>\n",
+              "\t<tr><th></th><th scope=col>used</th><th scope=col>(Mb)</th><th scope=col>gc trigger</th><th scope=col>(Mb)</th><th scope=col>max used</th><th scope=col>(Mb)</th></tr>\n",
+              "</thead>\n",
+              "<tbody>\n",
+              "\t<tr><th scope=row>Ncells</th><td> 899927</td><td>48.1</td><td>  1454471</td><td>  77.7</td><td>  1454471</td><td>  77.7</td></tr>\n",
+              "\t<tr><th scope=row>Vcells</th><td>1759447</td><td>13.5</td><td>139662797</td><td>1065.6</td><td>232879326</td><td>1776.8</td></tr>\n",
+              "</tbody>\n",
+              "</table>\n"
+            ],
+            "text/markdown": "\nA matrix: 2 × 6 of type dbl\n\n| <!--/--> | used | (Mb) | gc trigger | (Mb) | max used | (Mb) |\n|---|---|---|---|---|---|---|\n| Ncells |  899927 | 48.1 |   1454471 |   77.7 |   1454471 |   77.7 |\n| Vcells | 1759447 | 13.5 | 139662797 | 1065.6 | 232879326 | 1776.8 |\n\n",
+            "text/latex": "A matrix: 2 × 6 of type dbl\n\\begin{tabular}{r|llllll}\n  & used & (Mb) & gc trigger & (Mb) & max used & (Mb)\\\\\n\\hline\n\tNcells &  899927 & 48.1 &   1454471 &   77.7 &   1454471 &   77.7\\\\\n\tVcells & 1759447 & 13.5 & 139662797 & 1065.6 & 232879326 & 1776.8\\\\\n\\end{tabular}\n",
+            "text/plain": [
+              "       used    (Mb) gc trigger (Mb)   max used  (Mb)  \n",
+              "Ncells  899927 48.1   1454471    77.7   1454471   77.7\n",
+              "Vcells 1759447 13.5 139662797  1065.6 232879326 1776.8"
+            ]
+          },
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "* Instalacion de la libreria  rpart.plot  para dibujar el arbol\n",
+        "* invocacion de las librerias  **data.table** y  **rpart**"
+      ],
+      "metadata": {
+        "id": "v0CepvbjGimQ"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# cargo las librerias que necesito\n",
+        "require(\"data.table\")\n",
+        "require(\"rpart\")\n",
+        "require(\"parallel\")\n",
+        "\n",
+        "if(!require(\"R.utils\")) install.packages(\"R.utils\")\n",
+        "require(\"R.utils\")\n",
+        "\n",
+        "if (!require(\"primes\")) install.packages(\"primes\")\n",
+        "require(\"primes\")"
+      ],
+      "metadata": {
+        "id": "CRkZ1V2_GimR"
+      },
+      "execution_count": 61,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "###  Accion a Realizar\n",
+        "PARAM$semilla_primigenia  debe reemplazarse por SU primer semilla"
+      ],
+      "metadata": {
+        "id": "PZKJG-nSGimR"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "PARAM <- list()\n",
+        "PARAM$semilla_primigenia <- 111119\n",
+        "PARAM$qsemillas <- 50\n",
+        "PARAM$training_pct <- 70L  # entre  1L y 99L\n",
+        "\n",
+        "PARAM$rpart <- list (\n",
+        "  \"cp\" = -1, # complejidad minima\n",
+        "  \"minsplit\" = 170, # minima cantidad de regs en un nodo para hacer el split\n",
+        "  \"minbucket\" = 70, # minima cantidad de regs en una hoja\n",
+        "  \"maxdepth\" = 7 # profundidad máxima del arbol\n",
+        ")\n"
+      ],
+      "metadata": {
+        "id": "4kbkA-2HGimR"
+      },
+      "execution_count": 62,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# particionar agrega una columna llamada fold a un dataset\n",
+        "#  que consiste en una particion estratificada segun agrupa\n",
+        "\n",
+        "# particionar( data=dataset, division=c(70,30),\n",
+        "#  agrupa=clase_ternaria, seed=semilla)   crea una particion 70, 30\n",
+        "\n",
+        "particionar <- function(\n",
+        "    data, division, agrupa = \"\",\n",
+        "    campo = \"fold\", start = 1, seed = NA) {\n",
+        "  if (!is.na(seed)) set.seed(seed)\n",
+        "\n",
+        "  bloque <- unlist(mapply(function(x, y) {\n",
+        "    rep(y, x)\n",
+        "  }, division, seq(from = start, length.out = length(division))))\n",
+        "\n",
+        "  data[, (campo) := sample(rep(bloque, ceiling(.N / length(bloque))))[1:.N],\n",
+        "    by = agrupa\n",
+        "  ]\n",
+        "}\n"
+      ],
+      "metadata": {
+        "id": "HME0qUeOGimS"
+      },
+      "execution_count": 63,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "\n",
+        "ArbolEstimarGanancia <- function(semilla, param_basicos) {\n",
+        "  # particiono estratificadamente el dataset\n",
+        "  particionar(dataset,\n",
+        "    division = c(param_basicos$training_pct, 100L -param_basicos$training_pct),\n",
+        "    agrupa = \"clase_ternaria\",\n",
+        "    seed = semilla # aqui se usa SU semilla\n",
+        "  )\n",
+        "\n",
+        "  # genero el modelo\n",
+        "  # predecir clase_ternaria a partir del resto\n",
+        "  modelo <- rpart(\"clase_ternaria ~ .\",\n",
+        "    data = dataset[fold == 1], # fold==1  es training,  el 70% de los datos\n",
+        "    xval = 0,\n",
+        "    control = param_basicos$rpart\n",
+        "  ) # aqui van los parametros del arbol\n",
+        "\n",
+        "  # aplico el modelo a los datos de testing\n",
+        "  prediccion <- predict(modelo, # el modelo que genere recien\n",
+        "    dataset[fold == 2], # fold==2  es testing, el 30% de los datos\n",
+        "    type = \"prob\"\n",
+        "  ) # type= \"prob\"  es que devuelva la probabilidad\n",
+        "\n",
+        "  # prediccion es una matriz con TRES columnas,\n",
+        "  #  llamadas \"BAJA+1\", \"BAJA+2\"  y \"CONTINUA\"\n",
+        "  # cada columna es el vector de probabilidades\n",
+        "\n",
+        "\n",
+        "  # calculo la ganancia en testing  qu es fold==2\n",
+        "  ganancia_test <- dataset[\n",
+        "    fold == 2,\n",
+        "    sum(ifelse(prediccion[, \"BAJA+2\"] > 0.025,\n",
+        "      ifelse(clase_ternaria == \"BAJA+2\", 780000, -20000),\n",
+        "      0\n",
+        "    ))\n",
+        "  ]\n",
+        "\n",
+        "  # escalo la ganancia como si fuera todo el dataset\n",
+        "  ganancia_test_normalizada <- ganancia_test / (( 100 - PARAM$training_pct ) / 100 )\n",
+        "\n",
+        "  return(list(\n",
+        "    \"semilla\" = semilla,\n",
+        "    \"testing\" = dataset[fold == 2, .N],\n",
+        "    \"testing_pos\" = dataset[fold == 2 & clase_ternaria == \"BAJA+2\", .N],\n",
+        "    \"envios\" = dataset[fold == 2, sum(prediccion[, \"BAJA+2\"] > 0.025)],\n",
+        "    \"aciertos\" = dataset[\n",
+        "        fold == 2,\n",
+        "        sum(prediccion[, \"BAJA+2\"] > 0.025 & clase_ternaria == \"BAJA+2\")\n",
+        "    ],\n",
+        "    \"ganancia_test\" = ganancia_test_normalizada\n",
+        "  ))\n",
+        "}\n"
+      ],
+      "metadata": {
+        "id": "ro9Ufoi-GimS"
+      },
+      "execution_count": 64,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# carpeta de trabajo\n",
+        "setwd(\"/content/buckets/b1/exp\")\n",
+        "experimento <- \"exp0204\"\n",
+        "dir.create(experimento, showWarnings=FALSE)\n",
+        "setwd( paste0(\"/content/buckets/b1/exp/\", experimento ))"
+      ],
+      "metadata": {
+        "id": "gz7LgltwGimT"
+      },
+      "execution_count": 65,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# lectura del dataset\n",
+        "dataset <- fread(\"/content/datasets/competencia_01.csv.gz\")\n",
+        "nrow(dataset)"
+      ],
+      "metadata": {
+        "id": "xRXKHeLeGimT",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 34
+        },
+        "outputId": "28ea1329-a4db-4778-8983-af90ae73cbc0"
+      },
+      "execution_count": 66,
+      "outputs": [
+        {
+          "output_type": "display_data",
+          "data": {
+            "text/html": [
+              "978439"
+            ],
+            "text/markdown": "978439",
+            "text/latex": "978439",
+            "text/plain": [
+              "[1] 978439"
+            ]
+          },
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# trabajo solo con los datos de 202104, ultimo mes con clase_ternaria completa\n",
+        "# filtro datos\n",
+        "dataset <- dataset[foto_mes==202104]\n",
+        "\n",
+        "invisible(gc(full=TRUE, verbose=FALSE)) # garbage collection\n",
+        "\n",
+        "nrow(dataset)\n",
+        "dataset[, .N, list(foto_mes,clase_ternaria)]"
+      ],
+      "metadata": {
+        "id": "ejWYrB53hs_h",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 209
+        },
+        "outputId": "e49636ee-cf7b-4907-8ba0-a43e422c74fd"
+      },
+      "execution_count": 67,
+      "outputs": [
+        {
+          "output_type": "display_data",
+          "data": {
+            "text/html": [
+              "163418"
+            ],
+            "text/markdown": "163418",
+            "text/latex": "163418",
+            "text/plain": [
+              "[1] 163418"
+            ]
+          },
+          "metadata": {}
+        },
+        {
+          "output_type": "display_data",
+          "data": {
+            "text/html": [
+              "<table class=\"dataframe\">\n",
+              "<caption>A data.table: 3 × 3</caption>\n",
+              "<thead>\n",
+              "\t<tr><th scope=col>foto_mes</th><th scope=col>clase_ternaria</th><th scope=col>N</th></tr>\n",
+              "\t<tr><th scope=col>&lt;int&gt;</th><th scope=col>&lt;chr&gt;</th><th scope=col>&lt;int&gt;</th></tr>\n",
+              "</thead>\n",
+              "<tbody>\n",
+              "\t<tr><td>202104</td><td>CONTINUA</td><td>161333</td></tr>\n",
+              "\t<tr><td>202104</td><td>BAJA+1  </td><td>   955</td></tr>\n",
+              "\t<tr><td>202104</td><td>BAJA+2  </td><td>  1130</td></tr>\n",
+              "</tbody>\n",
+              "</table>\n"
+            ],
+            "text/markdown": "\nA data.table: 3 × 3\n\n| foto_mes &lt;int&gt; | clase_ternaria &lt;chr&gt; | N &lt;int&gt; |\n|---|---|---|\n| 202104 | CONTINUA | 161333 |\n| 202104 | BAJA+1   |    955 |\n| 202104 | BAJA+2   |   1130 |\n\n",
+            "text/latex": "A data.table: 3 × 3\n\\begin{tabular}{lll}\n foto\\_mes & clase\\_ternaria & N\\\\\n <int> & <chr> & <int>\\\\\n\\hline\n\t 202104 & CONTINUA & 161333\\\\\n\t 202104 & BAJA+1   &    955\\\\\n\t 202104 & BAJA+2   &   1130\\\\\n\\end{tabular}\n",
+            "text/plain": [
+              "  foto_mes clase_ternaria N     \n",
+              "1 202104   CONTINUA       161333\n",
+              "2 202104   BAJA+1            955\n",
+              "3 202104   BAJA+2           1130"
+            ]
+          },
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# genero numeros primos\n",
+        "primos <- generate_primes(min = 100000, max = 1000000)\n",
+        "set.seed(PARAM$semilla_primigenia) # inicializo\n",
+        "\n",
+        "# me quedo con PARAM$qsemillas   semillas\n",
+        "PARAM$semillas <- sample(primos, PARAM$qsemillas )"
+      ],
+      "metadata": {
+        "id": "MdpZ10qiHSZy"
+      },
+      "execution_count": 68,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "\n",
+        "# la funcion mcmapply  llama a la funcion ArbolEstimarGanancia\n",
+        "#  tantas veces como valores tenga el vector  PARAM$semillas\n",
+        "salidas <- mcmapply(ArbolEstimarGanancia,\n",
+        "  PARAM$semillas, # paso el vector de semillas\n",
+        "  MoreArgs = list(PARAM), # aqui paso el segundo parametro\n",
+        "  SIMPLIFY = FALSE,\n",
+        "  mc.cores = detectCores()\n",
+        ")\n",
+        "\n",
+        "# muestro la lista de las salidas en testing\n",
+        "#  para la particion realizada con cada semilla\n",
+        "salidas\n"
+      ],
+      "metadata": {
+        "id": "r-YaawpgGimU"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# paso la lista a vector\n",
+        "tb_salida <- rbindlist(salidas)\n",
+        "print( tb_salida)"
+      ],
+      "metadata": {
+        "id": "unGWiKRMGimU"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# calulo la salida\n",
+        "for( i in seq(10, 50, 10) )\n",
+        "{\n",
+        "  cat( i, \"\\t\", tb_salida[ 1:i, mean(ganancia_test)], \"\\n\" )\n",
+        "}\n"
+      ],
+      "metadata": {
+        "id": "oGoadhBKGimV"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "### Acciones a realizar\n",
+        "* Reportar la  los resultados en la planilla colaborativa hoja  **C2-Nsem**\n",
+        "* Se discutirá en clase la variabilidad de las distintas cantidades de semillas"
+      ],
+      "metadata": {
+        "id": "dO9yQKt7GimV"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "\n",
+        "\n",
+        "---\n",
+        "\n"
+      ],
+      "metadata": {
+        "id": "ziFKwIlBGimW"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "\n",
+        "\n",
+        "---\n",
+        "\n"
+      ],
+      "metadata": {
+        "id": "OTLq8TC4LR0c"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "# 5 Comparando dos distintos  modelos\n",
+        "## Clase 02  Experimento 5"
+      ],
+      "metadata": {
+        "id": "sAS1bfL8LmBv"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## 5.1  Objetivos\n",
+        "Presentar a los alumnos la dificultad que se presenta ante la comparación de dos modelos, uno posee un poder predictivo claramente mayor al otro.\n",
+        "Comparación simple de media de ganancias, versus probabilidad que un modelo sea superior a otro."
+      ],
+      "metadata": {
+        "id": "KzwdMJDZLmB9"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## 5.2 Introduccion\n",
+        "Estos son los dos arboles de muy distinta profundidad.\n",
+        "<br>¿Cuál de ellos es mejor? ¿Cuál elijo?\n",
+        "\n",
+        "| Hiperparámetro | Arbol 1 | Arbol 2 |\n",
+        "| --- | --: |  ---: |\n",
+        "| cp | -1 | -1 |\n",
+        "|minsplit | 170 | 250 |\n",
+        "|minbucket | 70 | 125 |\n",
+        "|maxdepth | 7 | 20 |\n",
+        "\n"
+      ],
+      "metadata": {
+        "id": "DDyFNmJ9L_CW"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## 5.3 Codigo dos distintos modelos"
+      ],
+      "metadata": {
+        "id": "bQfwNsVzNrtI"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "Esta parte se debe correr con el runtime en lenguaje **R** Ir al menu, Runtime -> Change Runtime Tipe -> Runtime type -> R"
+      ],
+      "metadata": {
+        "id": "Ku7qQgKjNruJ"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "El tiempo de corrida es de alrededor de 40 minutos"
+      ],
+      "metadata": {
+        "id": "6jCdS3NMuKei"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "limpio el ambiente de R"
+      ],
+      "metadata": {
+        "id": "Z1EUBeHyNruK"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# limpio la memoria\n",
+        "rm(list=ls(all.names=TRUE)) # remove all objects\n",
+        "gc(full=TRUE, verbose=FALSE) # garbage collection"
+      ],
+      "metadata": {
+        "id": "GxbC4V3zNruM"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "* Instalacion de la libreria  rpart.plot  para dibujar el arbol\n",
+        "* invocacion de las librerias  **data.table** y  **rpart**"
+      ],
+      "metadata": {
+        "id": "i2WkSCIhNruQ"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# cargo las librerias que necesito\n",
+        "require(\"data.table\")\n",
+        "require(\"rpart\")\n",
+        "require(\"parallel\")\n",
+        "\n",
+        "if (!require(\"primes\")) install.packages(\"primes\")\n",
+        "require(\"primes\")\n",
+        "\n",
+        "if(!require(\"R.utils\")) install.packages(\"R.utils\")\n",
+        "require(\"R.utils\")\n",
+        "\n",
+        "require(\"ggplot2\")"
+      ],
+      "metadata": {
+        "id": "3bMsgZJWNruR"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "###  Accion a Realizar\n",
+        "PARAM$semilla_primigenia  debe reemplazarse por SU primer semilla"
+      ],
+      "metadata": {
+        "id": "t1lTXrKaNruT"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "PARAM <- list()\n",
+        "PARAM$semilla_primigenia <- 102191\n",
+        "PARAM$qsemillas <- 20\n",
+        "PARAM$training_pct <- 70L     # entre 1 y 100\n"
+      ],
+      "metadata": {
+        "id": "QFbPtTCMNruV"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# los dos arboles\n",
+        "PARAM$rpart1 <- list (\n",
+        "  \"cp\" = -1,\n",
+        "  \"minsplit\" = 170,\n",
+        "  \"minbucket\" = 70,\n",
+        "  \"maxdepth\" = 7\n",
+        ")\n",
+        "\n",
+        "\n",
+        "PARAM$rpart2 <- list (\n",
+        "  \"cp\" = -1,\n",
+        "  \"minsplit\" = 250,\n",
+        "  \"minbucket\" = 125,\n",
+        "  \"maxdepth\" = 20\n",
+        ")"
+      ],
+      "metadata": {
+        "id": "GiBGk7WKQv2V"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# particionar agrega una columna llamada fold a un dataset\n",
+        "#  que consiste en una particion estratificada segun agrupa\n",
+        "\n",
+        "# particionar( data=dataset, division=c(70,30),\n",
+        "#  agrupa=clase_ternaria, seed=semilla)   crea una particion 70, 30\n",
+        "\n",
+        "particionar <- function(\n",
+        "    data, division, agrupa = \"\",\n",
+        "    campo = \"fold\", start = 1, seed = NA) {\n",
+        "  if (!is.na(seed)) set.seed(seed)\n",
+        "\n",
+        "  bloque <- unlist(mapply(function(x, y) {\n",
+        "    rep(y, x)\n",
+        "  }, division, seq(from = start, length.out = length(division))))\n",
+        "\n",
+        "  data[, (campo) := sample(rep(bloque, ceiling(.N / length(bloque))))[1:.N],\n",
+        "    by = agrupa\n",
+        "  ]\n",
+        "}\n"
+      ],
+      "metadata": {
+        "id": "2BabfKg7NruX"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "DosArbolesEstimarGanancia <- function(semilla, training_pct, param_rpart1, param_rpart2) {\n",
+        "\n",
+        "  # fuerzo impresion\n",
+        "  print( paste( semilla, Sys.time()) )\n",
+        "  flush.console()\n",
+        "\n",
+        "  # particiono estratificadamente el dataset\n",
+        "  particionar(dataset,\n",
+        "    division = c(training_pct, 100L -training_pct),\n",
+        "    agrupa = \"clase_ternaria\",\n",
+        "    seed = semilla # aqui se usa SU semilla\n",
+        "  )\n",
+        "\n",
+        "  # genero el modelo\n",
+        "  # predecir clase_ternaria a partir del resto\n",
+        "  modelo1 <- rpart(\"clase_ternaria ~ .\",\n",
+        "    data = dataset[fold == 1], # fold==1  es training,  el 70% de los datos\n",
+        "    xval = 0,\n",
+        "    control = param_rpart1\n",
+        "  ) # aqui van los parametros del arbol\n",
+        "\n",
+        "  # aplico el modelo a los datos de testing\n",
+        "  prediccion1 <- predict(modelo1, # el modelo que genere recien\n",
+        "    dataset[fold == 2], # fold==2  es testing, el 30% de los datos\n",
+        "    type = \"prob\"\n",
+        "  ) # type= \"prob\"  es que devuelva la probabilidad\n",
+        "\n",
+        "\n",
+        "  # calculo la ganancia en testing  qu es fold==2\n",
+        "  ganancia_test1 <- dataset[\n",
+        "    fold == 2,\n",
+        "    sum(ifelse(prediccion1[, \"BAJA+2\"] > 0.025,\n",
+        "      ifelse(clase_ternaria == \"BAJA+2\", 780000, -20000),\n",
+        "      0\n",
+        "    ))\n",
+        "  ]\n",
+        "\n",
+        "  # escalo la ganancia como si fuera todo el dataset\n",
+        "  ganancia_test_normalizada1 <- ganancia_test1 / (( 100 - training_pct ) / 100 )\n",
+        "\n",
+        "  modelo2 <- rpart(\"clase_ternaria ~ .\",\n",
+        "    data = dataset[fold == 1], # fold==1  es training,  el 70% de los datos\n",
+        "    xval = 0,\n",
+        "    control = param_rpart2\n",
+        "  ) # aqui van los parametros del arbol\n",
+        "\n",
+        "  # aplico el modelo a los datos de testing\n",
+        "  prediccion2 <- predict(modelo2, # el modelo que genere recien\n",
+        "    dataset[fold == 2], # fold==2  es testing, el 30% de los datos\n",
+        "    type = \"prob\"\n",
+        "  ) # type= \"prob\"  es que devuelva la probabilidad\n",
+        "\n",
+        "\n",
+        "  # calculo la ganancia en testing  qu es fold==2\n",
+        "  ganancia_test2 <- dataset[\n",
+        "    fold == 2,\n",
+        "    sum(ifelse(prediccion2[, \"BAJA+2\"] > 0.025,\n",
+        "      ifelse(clase_ternaria == \"BAJA+2\", 780000, -20000),\n",
+        "      0\n",
+        "    ))\n",
+        "  ]\n",
+        "\n",
+        "  # escalo la ganancia como si fuera todo el dataset\n",
+        "  ganancia_test_normalizada2 <- ganancia_test2 / (( 100 - training_pct ) / 100 )\n",
+        "\n",
+        "  return(list(\n",
+        "    \"semilla\" = semilla,\n",
+        "    \"ganancia1\" = ganancia_test_normalizada1,\n",
+        "    \"ganancia2\" = ganancia_test_normalizada2\n",
+        "  ))\n",
+        "}"
+      ],
+      "metadata": {
+        "id": "YrGJgj4UNruZ"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# carpeta de trabajo\n",
+        "setwd(\"/content/buckets/b1/exp\")\n",
+        "experimento <- \"exp0205\"\n",
+        "dir.create(experimento, showWarnings=FALSE)\n",
+        "setwd( paste0(\"/content/buckets/b1/exp/\", experimento ))"
+      ],
+      "metadata": {
+        "id": "2C2yjgQVNrud"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# lectura del dataset\n",
+        "dataset <- fread(\"/content/datasets/competencia_01.csv.gz\")\n",
+        "nrow(dataset)"
+      ],
+      "metadata": {
+        "id": "oQeGcBnPNrug"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# trabajo solo con los datos de 202104, ultimo mes con clase_ternaria completa\n",
+        "# filtro datos\n",
+        "dataset <- dataset[foto_mes==202104]\n",
+        "\n",
+        "invisible(gc(full=TRUE, verbose=FALSE)) # garbage collection\n",
+        "\n",
+        "nrow(dataset)\n",
+        "dataset[, .N, list(foto_mes,clase_ternaria)]"
+      ],
+      "metadata": {
+        "id": "q0-sk2H8jjKx"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "detectCores()"
+      ],
+      "metadata": {
+        "id": "gXKI2eXO9Osx"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# genero numeros primos\n",
+        "primos <- generate_primes(min = 100000, max = 1000000)\n",
+        "set.seed(PARAM$semilla_primigenia) # inicializo\n",
+        "\n",
+        "# me quedo con PARAM$qsemillas   semillas\n",
+        "PARAM$semillas <- sample(primos, PARAM$qsemillas )\n",
+        "PARAM$semillas"
+      ],
+      "metadata": {
+        "id": "tU8S7_5ANrui"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# demora interminables 60 minutos en correr en Google Colab\n",
+        "Sys.time()\n",
+        "\n",
+        "salidas <- mcmapply( DosArbolesEstimarGanancia,\n",
+        "  PARAM$semillas, # paso el vector de semillas\n",
+        "  MoreArgs = list(PARAM$training_pct, PARAM$rpart1, PARAM$rpart2), # aqui paso el segundo parametro\n",
+        "  SIMPLIFY = FALSE,\n",
+        "  mc.cores = detectCores()\n",
+        ")\n",
+        "\n",
+        "Sys.time()"
+      ],
+      "metadata": {
+        "id": "mlF66CgxcHF3"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# paso la lista a vector\n",
+        "tb_salida <- rbindlist(salidas)\n",
+        "tb_salida"
+      ],
+      "metadata": {
+        "id": "_g-_kccdNrum"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "grafico <- ggplot( tb_salida, aes(x=ganancia1)) + geom_density(alpha=0.25, fill=\"green\", color=\"green\")  +\n",
+        "             geom_density(data=tb_salida, aes(x=ganancia2), fill=\"purple\", color=\"purple\",  alpha=0.10)\n",
+        "\n",
+        "print(grafico)"
+      ],
+      "metadata": {
+        "id": "-O0rg6btNrun"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# imprimo en un .pdf  que va a la carpeta del experimento\n",
+        "pdf(\"densidad_dos.pdf\")\n",
+        "print(grafico)\n",
+        "dev.off()"
+      ],
+      "metadata": {
+        "id": "uSqrazOyU_LC"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "print( tb_salida[ , list( \"arbol1\" = mean( ganancia1),  \"arbol2\" = mean(ganancia2) ) ] )\n",
+        "\n",
+        "print( tb_salida[ , list( \"prob( m1 > m2)\" = sum(ganancia1 > ganancia2 )/ .N ) ]  )"
+      ],
+      "metadata": {
+        "id": "LGv0LB_4R7US"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "### Acciones a realizar\n",
+        "* Reportar la  los resultados en la planilla colaborativa hoja  **C2-dosModelos**\n",
+        "* ¿Todos los alumnos hubieran elegido el mismo modelo aun con 20 semillas?"
+      ],
+      "metadata": {
+        "id": "F6lFJf1VTi8b"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "\n",
+        "\n",
+        "---\n",
+        "\n"
+      ],
+      "metadata": {
+        "id": "aOpy-XBKTi8n"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "# 6 Comparando dos buenos  modelos\n",
+        "## Clase 02  Experimento 6"
+      ],
+      "metadata": {
+        "id": "EdzjiJf-dsEK"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## 6.1  Objetivos\n",
+        "Presentar a los alumnos la dificultad que surge en la comparación de dos muy distintos, pero ambos buenos, modelos predictivos, y el costo computacional asociado a esa comparación\n",
+        "<br>Comparación simple de media de ganancias, versus probabilidad que un modelo sea superior a otro.\n",
+        "<br>Limitaciones de la MonteCarlo Cross Validation\n",
+        "<br>Existencia del Test de Wilcoxon"
+      ],
+      "metadata": {
+        "id": "FcBjp5XxdsEt"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## 6.2 Introduccion\n",
+        "Estos son los dos arboles de muy distinta profundidad.\n",
+        "<br>¿Cuál de ellos es mejor? ¿Cuál elijo?\n",
+        "\n",
+        "| Hiperparámetro | Arbol 1 | Arbol 2 |\n",
+        "| --- | --: |  ---: |\n",
+        "| cp | -1 | -1 |\n",
+        "|minsplit | 700 | 115 |\n",
+        "|minbucket | 350 | 5 |\n",
+        "|maxdepth | 8 | 6 |\n",
+        "\n"
+      ],
+      "metadata": {
+        "id": "tYcOIcwCdsEu"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## 6.3 Dos buenos modelos"
+      ],
+      "metadata": {
+        "id": "r0NDA7GgdsEu"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "Esta parte se debe correr con el runtime en lenguaje **R** Ir al menu, Runtime -> Change Runtime Tipe -> Runtime type -> R"
+      ],
+      "metadata": {
+        "id": "21SJmGd7dsEv"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "El tiempo de corrida es de alrededor de 50 minutos"
+      ],
+      "metadata": {
+        "id": "Ne0e08KUt87w"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "limpio el ambiente de R"
+      ],
+      "metadata": {
+        "id": "q02SEGNwdsEv"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# limpio la memoria\n",
+        "rm(list=ls(all.names=TRUE)) # remove all objects\n",
+        "gc(full=TRUE, verbose=FALSE) # garbage collection"
+      ],
+      "metadata": {
+        "id": "6c2ZJstWdsEw"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "* Instalacion de la libreria  rpart.plot  para dibujar el arbol\n",
+        "* invocacion de las librerias  **data.table** y  **rpart**"
+      ],
+      "metadata": {
+        "id": "62MIW0r1dsEx"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# cargo las librerias que necesito\n",
+        "require(\"data.table\")\n",
+        "require(\"rpart\")\n",
+        "require(\"parallel\")\n",
+        "\n",
+        "if(!require(\"R.utils\")) install.packages(\"R.utils\")\n",
+        "require(\"R.utils\")\n",
+        "\n",
+        "if (!require(\"primes\")) install.packages(\"primes\")\n",
+        "require(\"primes\")\n",
+        "\n",
+        "require(\"ggplot2\")"
+      ],
+      "metadata": {
+        "id": "2Ke4n-N8dsEy"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "###  Accion a Realizar\n",
+        "PARAM$semilla_primigenia  debe reemplazarse por SU primer semilla"
+      ],
+      "metadata": {
+        "id": "UHSoeqi4dsEz"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "PARAM <- list()\n",
+        "PARAM$semilla_primigenia <- 102191\n",
+        "PARAM$qsemillas <- 50\n",
+        "PARAM$training_pct <- 70L     # entre 1 y 100\n"
+      ],
+      "metadata": {
+        "id": "f08_sqfAdsEz"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# los dos arboles\n",
+        "PARAM$rpart1 <- list (\n",
+        "  \"cp\" = -1,\n",
+        "  \"minsplit\" = 750,\n",
+        "  \"minbucket\" = 350,\n",
+        "  \"maxdepth\" = 8\n",
+        ")\n",
+        "\n",
+        "\n",
+        "PARAM$rpart2 <- list (\n",
+        "  \"cp\" = -1,\n",
+        "  \"minsplit\" = 115,\n",
+        "  \"minbucket\" = 5,\n",
+        "  \"maxdepth\" = 6\n",
+        ")\n"
+      ],
+      "metadata": {
+        "id": "L735D9rydsE0"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# particionar agrega una columna llamada fold a un dataset\n",
+        "#  que consiste en una particion estratificada segun agrupa\n",
+        "\n",
+        "# particionar( data=dataset, division=c(70,30),\n",
+        "#  agrupa=clase_ternaria, seed=semilla)   crea una particion 70, 30\n",
+        "\n",
+        "particionar <- function(\n",
+        "    data, division, agrupa = \"\",\n",
+        "    campo = \"fold\", start = 1, seed = NA) {\n",
+        "  if (!is.na(seed)) set.seed(seed)\n",
+        "\n",
+        "  bloque <- unlist(mapply(function(x, y) {\n",
+        "    rep(y, x)\n",
+        "  }, division, seq(from = start, length.out = length(division))))\n",
+        "\n",
+        "  data[, (campo) := sample(rep(bloque, ceiling(.N / length(bloque))))[1:.N],\n",
+        "    by = agrupa\n",
+        "  ]\n",
+        "}\n"
+      ],
+      "metadata": {
+        "id": "O56epLUGdsE1"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "DosArbolesEstimarGanancia <- function(semilla, training_pct, param_rpart1, param_rpart2) {\n",
+        "  # fuerzo impresion\n",
+        "  print( paste( semilla, Sys.time()) )\n",
+        "  flush.console()\n",
+        "\n",
+        "  # particiono estratificadamente el dataset\n",
+        "  particionar(dataset,\n",
+        "    division = c(training_pct, 100L -training_pct),\n",
+        "    agrupa = \"clase_ternaria\",\n",
+        "    seed = semilla # aqui se usa SU semilla\n",
+        "  )\n",
+        "\n",
+        "  # genero el modelo\n",
+        "  # predecir clase_ternaria a partir del resto\n",
+        "  modelo1 <- rpart(\"clase_ternaria ~ .\",\n",
+        "    data = dataset[fold == 1], # fold==1  es training,  el 70% de los datos\n",
+        "    xval = 0,\n",
+        "    control = param_rpart1\n",
+        "  ) # aqui van los parametros del arbol\n",
+        "\n",
+        "  # aplico el modelo a los datos de testing\n",
+        "  prediccion1 <- predict(modelo1, # el modelo que genere recien\n",
+        "    dataset[fold == 2], # fold==2  es testing, el 30% de los datos\n",
+        "    type = \"prob\"\n",
+        "  ) # type= \"prob\"  es que devuelva la probabilidad\n",
+        "\n",
+        "\n",
+        "  # calculo la ganancia en testing  qu es fold==2\n",
+        "  ganancia_test1 <- dataset[\n",
+        "    fold == 2,\n",
+        "    sum(ifelse(prediccion1[, \"BAJA+2\"] > 0.025,\n",
+        "      ifelse(clase_ternaria == \"BAJA+2\", 780000, -20000),\n",
+        "      0\n",
+        "    ))\n",
+        "  ]\n",
+        "\n",
+        "  # escalo la ganancia como si fuera todo el dataset\n",
+        "  ganancia_test_normalizada1 <- ganancia_test1 / (( 100 - training_pct ) / 100 )\n",
+        "\n",
+        "  modelo2 <- rpart(\"clase_ternaria ~ .\",\n",
+        "    data = dataset[fold == 1], # fold==1  es training,  el 70% de los datos\n",
+        "    xval = 0,\n",
+        "    control = param_rpart2\n",
+        "  ) # aqui van los parametros del arbol\n",
+        "\n",
+        "  # aplico el modelo a los datos de testing\n",
+        "  prediccion2 <- predict(modelo2, # el modelo que genere recien\n",
+        "    dataset[fold == 2], # fold==2  es testing, el 30% de los datos\n",
+        "    type = \"prob\"\n",
+        "  ) # type= \"prob\"  es que devuelva la probabilidad\n",
+        "\n",
+        "\n",
+        "  # calculo la ganancia en testing  qu es fold==2\n",
+        "  ganancia_test2 <- dataset[\n",
+        "    fold == 2,\n",
+        "    sum(ifelse(prediccion2[, \"BAJA+2\"] > 0.025,\n",
+        "      ifelse(clase_ternaria == \"BAJA+2\", 780000, -20000),\n",
+        "      0\n",
+        "    ))\n",
+        "  ]\n",
+        "\n",
+        "  # escalo la ganancia como si fuera todo el dataset\n",
+        "  ganancia_test_normalizada2 <- ganancia_test2 / (( 100 - training_pct ) / 100 )\n",
+        "\n",
+        "  return(list(\n",
+        "    \"semilla\" = semilla,\n",
+        "    \"ganancia1\" = ganancia_test_normalizada1,\n",
+        "    \"ganancia2\" = ganancia_test_normalizada2\n",
+        "  ))\n",
+        "}"
+      ],
+      "metadata": {
+        "id": "Bv_NorLhdsE1"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# carpeta de trabajo\n",
+        "setwd(\"/content/buckets/b1/exp\")\n",
+        "experimento <- \"exp0206\"\n",
+        "dir.create(experimento, showWarnings=FALSE)\n",
+        "setwd( paste0(\"/content/buckets/b1/exp/\", experimento ))"
+      ],
+      "metadata": {
+        "id": "N9GarblIdsE3"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# lectura del dataset\n",
+        "dataset <- fread(\"/content/datasets/competencia_01.csv.gz\")\n",
+        "nrow(dataset)"
+      ],
+      "metadata": {
+        "id": "Z05r3wdTdsE3"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# trabajo solo con los datos de 202104, ultimo mes con clase_ternaria completa\n",
+        "# filtro datos\n",
+        "dataset <- dataset[foto_mes==202104]\n",
+        "\n",
+        "invisible(gc(full=TRUE, verbose=FALSE)) # garbage collection\n",
+        "\n",
+        "nrow(dataset)\n",
+        "dataset[, .N, list(foto_mes,clase_ternaria)]"
+      ],
+      "metadata": {
+        "id": "ncex-cvvlYf9"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# genero numeros primos\n",
+        "primos <- generate_primes(min = 100000, max = 1000000)\n",
+        "set.seed(PARAM$semilla_primigenia) # inicializo\n",
+        "\n",
+        "# me quedo con PARAM$qsemillas   semillas\n",
+        "PARAM$semillas <- sample(primos, PARAM$qsemillas )"
+      ],
+      "metadata": {
+        "id": "m8ODrVrndsE4"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# la funcion mcmapply  llama a la funcion DosArbolesEstimarGanancia\n",
+        "#  tantas veces como valores tenga el vector  PARAM$semillas\n",
+        "Sys.time()\n",
+        "\n",
+        "salidas <- mcmapply( DosArbolesEstimarGanancia,\n",
+        "  PARAM$semillas, # paso el vector de semillas\n",
+        "  MoreArgs = list(PARAM$training_pct, PARAM$rpart1, PARAM$rpart2), # aqui paso el segundo parametro\n",
+        "  SIMPLIFY = FALSE,\n",
+        "  mc.cores = detectCores()\n",
+        ")\n",
+        "\n",
+        "Sys.time()"
+      ],
+      "metadata": {
+        "id": "KQBhUXxJdsE5"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# paso la lista a vector\n",
+        "tb_salida <- rbindlist(salidas)\n",
+        "tb_salida"
+      ],
+      "metadata": {
+        "id": "N0eS1CFFdsE5"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "grafico <- ggplot( tb_salida, aes(x=ganancia1), fill=\"green\", color=\"green\") + geom_density(alpha=0.25)  +\n",
+        "             geom_density(data=tb_salida, aes(x=ganancia2), fill=\"purple\", color=\"purple\",  alpha=0.10)\n",
+        "\n",
+        "print(grafico)"
+      ],
+      "metadata": {
+        "id": "6vf28ujAdsE6"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# imprimo en un .pdf  que va a la carpeta del experimento\n",
+        "pdf(\"densidad_dos.pdf\")\n",
+        "print(grafico)\n",
+        "dev.off()"
+      ],
+      "metadata": {
+        "id": "TA9lLa6-dsE6"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# medias de las ganancias\n",
+        "print( tb_salida[ , list( \"arbol1\" = mean( ganancia1),  \"arbol2\" = mean(ganancia2) ) ] )\n"
+      ],
+      "metadata": {
+        "id": "xAOpyZTqdsE7"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# probabilidad que m1 sea mayor a m2\n",
+        "print( tb_salida[ , list( \"prob( m1 > m2)\" = sum(ganancia1 > ganancia2 )/ .N ) ]  )"
+      ],
+      "metadata": {
+        "id": "8rdPIcfzgob7"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "### Acciones a realizar\n",
+        "* Reportar la  los resultados en la planilla colaborativa hoja  **C2-dosBuenos**\n"
+      ],
+      "metadata": {
+        "id": "nNNJWYRadsE7"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "\n",
+        "\n",
+        "---\n",
+        "\n"
+      ],
+      "metadata": {
+        "id": "LTBEq6SEdsE8"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [],
+      "metadata": {
+        "id": "ebcTZX7Sg1Le"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "# 7 Test de Wilcoxon\n",
+        "## Clase 02  Experimento 7"
+      ],
+      "metadata": {
+        "id": "RAtn4x6Bg1u1"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [],
+      "metadata": {
+        "id": "RWxjnSsVg_ol"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## 7.1  Objetivos\n",
+        "\n",
+        "¿Como calcular la cantidad mínima de semillas que hacen falta para tener cierta certeza que un modelo es superior a otro?"
+      ],
+      "metadata": {
+        "id": "Gf0LF3ywhAEU"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## 7.2  Introduccion\n",
+        "\n",
+        "| Hiperparámetro | Arbol 1 | Arbol 2 |\n",
+        "| --- | --: |  ---: |\n",
+        "| cp | -1 | -1 |\n",
+        "|minsplit | 170 | 250 |\n",
+        "|minbucket | 70 | 125 |\n",
+        "|maxdepth | 7 | 20 |\n",
+        "\n",
+        "<br>\n",
+        "<br>\n",
+        "\n",
+        "\n",
+        "| ordinal | semilla | ganancia1 | ganancia2 | p-value |\n",
+        "| --- | --- |  --- |  --- |  --- |\n",
+        "| 1 |378821 | 301,800,000 | 252,666,667 | 1.000 |\n",
+        "| 2 | 964333  | 314,800,000  | 224,266,667 | 0.500 |\n",
+        "| 3 | 187049 | 326,600,000 | 278,000,000 | 0.250 |\n",
+        "| 4 | 205151 | 299,733,333 | 235,266,667 | 0.125 |\n",
+        "| 5 | 813697 | 275,333,333 | 205,600,000 |  0.063 |\n",
+        "| 6 | 344719 | 290,800,000 | 251,533,333 | 0.031 |\n",
+        "|7 |127217  | 268,200,000 | 219,800,000 |0.016 |\n",
+        "| 8 | 464371 | 271,866,667 | 270,800,000 | 0.008 |\n",
+        "| 9 | 645137 | 252,400,000| 261,733,333 | 0.004|\n",
+        "\n",
+        "\n"
+      ],
+      "metadata": {
+        "id": "k4PJGTDViZne"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## 7.3 Codigo Test de Wilcoxon"
+      ],
+      "metadata": {
+        "id": "gAeSRdWRhg61"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# 1 sola ganancia\n",
+        "wilcox.test(\n",
+        "  c(301800000),\n",
+        "  c(252666667),\n",
+        "  paired = TRUE\n",
+        ")\n"
+      ],
+      "metadata": {
+        "id": "6r5M0J0HdsE8"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# 2 ganancias\n",
+        "wilcox.test(\n",
+        "  c(301800000, 314800000),\n",
+        "  c(252666667, 224266667),\n",
+        "  paired = TRUE\n",
+        ")\n"
+      ],
+      "metadata": {
+        "id": "1pscqL9vLzYE"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# 3 ganancias\n",
+        "wilcox.test(\n",
+        "  c(301800000, 314800000, 326600000),\n",
+        "  c(252666667, 224266667, 278000000),\n",
+        "  paired = TRUE\n",
+        ")"
+      ],
+      "metadata": {
+        "id": "p3f_mtKwhSHA"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# 4 ganancias\n",
+        "wilcox.test(\n",
+        "  c(301800000, 314800000, 326600000, 299733333),\n",
+        "  c(252666667, 224266667, 278000000, 235266667),\n",
+        "  paired = TRUE\n",
+        ")\n"
+      ],
+      "metadata": {
+        "id": "-ijX69r9hT6Z"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# 5 ganancias\n",
+        "wilcox.test(\n",
+        "  c(301800000, 314800000, 326600000, 299733333, 275333333),\n",
+        "  c(252666667, 224266667, 278000000, 235266667, 205600000),\n",
+        "  paired = TRUE\n",
+        ")"
+      ],
+      "metadata": {
+        "id": "X9J_CHGehVfr"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# 6 ganancias\n",
+        "wilcox.test(\n",
+        "  c(301800000, 314800000, 326600000, 299733333, 275333333, 290800000),\n",
+        "  c(252666667, 224266667, 278000000, 235266667, 205600000, 251533333),\n",
+        "  paired = TRUE\n",
+        ")"
+      ],
+      "metadata": {
+        "id": "H3CNNonOhXp0"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Finalmente el p-value es  0.03125  < 0.05\n",
+        "# hicieron falta  SEIS semillas, seis ganancias, para\n",
+        "#   afirmar que el modelo 1 es superior al modelo 2\n",
+        "\n",
+        "# 7 ganancias\n",
+        "wilcox.test(\n",
+        "  c(301800000, 314800000, 326600000, 299733333, 275333333, 290800000, 268200000),\n",
+        "  c(252666667, 224266667, 278000000, 235266667, 205600000, 251533333, 219800000),\n",
+        "  paired = TRUE\n",
+        ")\n"
+      ],
+      "metadata": {
+        "id": "NTW8kwY8hamz"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# 8 ganancias\n",
+        "wilcox.test(\n",
+        "  c(301800000, 314800000, 326600000, 299733333, 275333333, 290800000, 268200000, 271866667),\n",
+        "  c(252666667, 224266667, 278000000, 235266667, 205600000, 251533333, 219800000, 270800000),\n",
+        "  paired = TRUE\n",
+        ")\n"
+      ],
+      "metadata": {
+        "id": "Xks918w8hcgC"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# 9 ganancias\n",
+        "wilcox.test(\n",
+        "  c(301800000, 314800000, 326600000, 299733333, 275333333, 290800000, 268200000, 271866667, 252400000),\n",
+        "  c(252666667, 224266667, 278000000, 235266667, 205600000, 251533333, 219800000, 270800000, 261733333),\n",
+        "  paired = TRUE\n",
+        ")"
+      ],
+      "metadata": {
+        "id": "5x8L1PMGhdJR"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "\n",
+        "\n",
+        "---\n",
+        "\n"
+      ],
+      "metadata": {
+        "id": "Qjay2WBIkhNm"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "# 8 Comparando automaticamente modelos con test de Wilcoxon\n",
+        "## Clase 02  Experimento 8"
+      ],
+      "metadata": {
+        "id": "g2aqxlCIk3fk"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [],
+      "metadata": {
+        "id": "FhCY4sH8k3fw"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## 8.1  Objetivos\n",
+        "\n",
+        "Proveer un script que permita comparar dos arboles de decisión con la librería rpart utilizando la menor cantidad de cómputo que permita el Test de Wilxcoxon"
+      ],
+      "metadata": {
+        "id": "a_ZVBKBHk3fx"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## 8.2  Introduccion\n",
+        "\n",
+        "| Hiperparámetro | Arbol 1 | Arbol 2 |\n",
+        "| --- | --- |  --- |\n",
+        "| cp | -1 | -1 |\n",
+        "|minsplit | 1050 | 650 |\n",
+        "|minbucket | 550 | 300 |\n",
+        "|maxdepth |67 | 6 |\n",
+        "\n",
+        "\n"
+      ],
+      "metadata": {
+        "id": "qCd56L0Ik3fx"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "## 8.3 Codigo comparacion automatica Wilcoxon"
+      ],
+      "metadata": {
+        "id": "NBtQsG3vk3fx"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "Esta parte se debe correr con el runtime en lenguaje **R** Ir al menu, Runtime -> Change Runtime Tipe -> Runtime type -> R"
+      ],
+      "metadata": {
+        "id": "-ARzDPORlpG6"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "limpio el ambiente de R"
+      ],
+      "metadata": {
+        "id": "-Sy-sLMXlpHI"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# limpio la memoria\n",
+        "rm(list=ls(all.names=TRUE)) # remove all objects\n",
+        "gc(full=TRUE, verbose=FALSE) # garbage collection"
+      ],
+      "metadata": {
+        "id": "ZpST7lcHlpHI"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "* Instalacion de la libreria  rpart.plot  para dibujar el arbol\n",
+        "* invocacion de las librerias  **data.table** y  **rpart**"
+      ],
+      "metadata": {
+        "id": "jHhAx3cvlpHJ"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# cargo las librerias que necesito\n",
+        "require(\"data.table\")\n",
+        "require(\"rpart\")\n",
+        "require(\"parallel\")\n",
+        "\n",
+        "if(!require(\"R.utils\")) install.packages(\"R.utils\")\n",
+        "require(\"R.utils\")\n",
+        "\n",
+        "if (!require(\"primes\")) install.packages(\"primes\")\n",
+        "require(\"primes\")\n",
+        "\n",
+        "require(\"ggplot2\")"
+      ],
+      "metadata": {
+        "id": "cbPnXeeqlpHJ"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "###  Accion a Realizar\n",
+        "PARAM$semilla_primigenia  debe reemplazarse por SU primer semilla"
+      ],
+      "metadata": {
+        "id": "_GQk_NEUlpHK"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "PARAM <- list()\n",
+        "PARAM$semilla_primigenia <- 102191\n",
+        "PARAM$qsemillas_tope <- 50\n",
+        "PARAM$training_pct <- 70L     # entre 1 y 100\n"
+      ],
+      "metadata": {
+        "id": "Do801PIHlpHK"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# los dos arboles\n",
+        "PARAM$rpart1 <- list (\n",
+        "  \"cp\" = -1,\n",
+        "  \"minsplit\" = 800,\n",
+        "  \"minbucket\" = 400,\n",
+        "  \"maxdepth\" = 7\n",
+        ")\n",
+        "\n",
+        "\n",
+        "PARAM$rpart2 <- list (\n",
+        "  \"cp\" = -1,\n",
+        "  \"minsplit\" = 650,\n",
+        "  \"minbucket\" = 300,\n",
+        "  \"maxdepth\" = 6\n",
+        ")\n"
+      ],
+      "metadata": {
+        "id": "KlC7gTc7lpHK"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# particionar agrega una columna llamada fold a un dataset\n",
+        "#  que consiste en una particion estratificada segun agrupa\n",
+        "\n",
+        "# particionar( data=dataset, division=c(70,30),\n",
+        "#  agrupa=clase_ternaria, seed=semilla)   crea una particion 70, 30\n",
+        "\n",
+        "particionar <- function(\n",
+        "    data, division, agrupa = \"\",\n",
+        "    campo = \"fold\", start = 1, seed = NA) {\n",
+        "  if (!is.na(seed)) set.seed(seed)\n",
+        "\n",
+        "  bloque <- unlist(mapply(function(x, y) {\n",
+        "    rep(y, x)\n",
+        "  }, division, seq(from = start, length.out = length(division))))\n",
+        "\n",
+        "  data[, (campo) := sample(rep(bloque, ceiling(.N / length(bloque))))[1:.N],\n",
+        "    by = agrupa\n",
+        "  ]\n",
+        "}\n"
+      ],
+      "metadata": {
+        "id": "I7hOkZrxlpHL"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "DosArbolesEstimarGanancia <- function(semilla, training_pct, param_rpart1, param_rpart2) {\n",
+        "  # particiono estratificadamente el dataset\n",
+        "  particionar(dataset,\n",
+        "    division = c(training_pct, 100L -training_pct),\n",
+        "    agrupa = \"clase_ternaria\",\n",
+        "    seed = semilla # aqui se usa SU semilla\n",
+        "  )\n",
+        "\n",
+        "  # genero el modelo\n",
+        "  # predecir clase_ternaria a partir del resto\n",
+        "  modelo1 <- rpart(\"clase_ternaria ~ .\",\n",
+        "    data = dataset[fold == 1], # fold==1  es training,  el 70% de los datos\n",
+        "    xval = 0,\n",
+        "    control = param_rpart1\n",
+        "  ) # aqui van los parametros del arbol\n",
+        "\n",
+        "  # aplico el modelo a los datos de testing\n",
+        "  prediccion1 <- predict(modelo1, # el modelo que genere recien\n",
+        "    dataset[fold == 2], # fold==2  es testing, el 30% de los datos\n",
+        "    type = \"prob\"\n",
+        "  ) # type= \"prob\"  es que devuelva la probabilidad\n",
+        "\n",
+        "\n",
+        "  # calculo la ganancia en testing  qu es fold==2\n",
+        "  ganancia_test1 <- dataset[\n",
+        "    fold == 2,\n",
+        "    sum(ifelse(prediccion1[, \"BAJA+2\"] > 0.025,\n",
+        "      ifelse(clase_ternaria == \"BAJA+2\", 780000, -20000),\n",
+        "      0\n",
+        "    ))\n",
+        "  ]\n",
+        "\n",
+        "  # escalo la ganancia como si fuera todo el dataset\n",
+        "  ganancia_test_normalizada1 <- ganancia_test1 / (( 100 - training_pct ) / 100 )\n",
+        "\n",
+        "  modelo2 <- rpart(\"clase_ternaria ~ .\",\n",
+        "    data = dataset[fold == 1], # fold==1  es training,  el 70% de los datos\n",
+        "    xval = 0,\n",
+        "    control = param_rpart2\n",
+        "  ) # aqui van los parametros del arbol\n",
+        "\n",
+        "  # aplico el modelo a los datos de testing\n",
+        "  prediccion2 <- predict(modelo2, # el modelo que genere recien\n",
+        "    dataset[fold == 2], # fold==2  es testing, el 30% de los datos\n",
+        "    type = \"prob\"\n",
+        "  ) # type= \"prob\"  es que devuelva la probabilidad\n",
+        "\n",
+        "\n",
+        "  # calculo la ganancia en testing  qu es fold==2\n",
+        "  ganancia_test2 <- dataset[\n",
+        "    fold == 2,\n",
+        "    sum(ifelse(prediccion2[, \"BAJA+2\"] > 0.025,\n",
+        "      ifelse(clase_ternaria == \"BAJA+2\", 780000, -20000),\n",
+        "      0\n",
+        "    ))\n",
+        "  ]\n",
+        "\n",
+        "  # escalo la ganancia como si fuera todo el dataset\n",
+        "  ganancia_test_normalizada2 <- ganancia_test2 / (( 100 - training_pct ) / 100 )\n",
+        "\n",
+        "  return(list(\n",
+        "    \"semilla\" = semilla,\n",
+        "    \"ganancia1\" = ganancia_test_normalizada1,\n",
+        "    \"ganancia2\" = ganancia_test_normalizada2\n",
+        "  ))\n",
+        "}"
+      ],
+      "metadata": {
+        "id": "vFpBSFBYlpHL"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# 1  ->  el modelo 1 es mejor\n",
+        "# 2  ->  el modelo 2 es mejor\n",
+        "# 0  ->  No se pudo determinar con el tope de qsemillas_tope\n",
+        "\n",
+        "\n",
+        "MejorArbol <- function( qsemillas_tope, training_pct, param_rpart1, param_rpart2) {\n",
+        "\n",
+        "  # genero numeros primos\n",
+        "  primos <- generate_primes(min = 100000, max = 1000000)\n",
+        "  set.seed(PARAM$semilla_primigenia) # inicializo\n",
+        "  # me quedo con PARAM$qsemillas   semillas\n",
+        "  semillas <- sample(primos, qsemillas_tope )\n",
+        "\n",
+        "  pvalue <- 1.0\n",
+        "  isem <- 1\n",
+        "  vgan1 <- c() # almaceno ganancias del modelo1\n",
+        "  vgan2 <- c() # almaceno ganancias del modelo2\n",
+        "\n",
+        "  while( (isem <= qsemillas_tope)  & (pvalue > 0.05) ) {\n",
+        "\n",
+        "    res <- DosArbolesEstimarGanancia(\n",
+        "       semillas[ isem ],\n",
+        "       training_pct,\n",
+        "       param_rpart1,\n",
+        "       param_rpart2\n",
+        "    )\n",
+        "\n",
+        "    vgan1 <- c( vgan1, res$ganancia1 )\n",
+        "    vgan2 <- c( vgan2, res$ganancia2 )\n",
+        "\n",
+        "    wt <- wilcox.test( vgan1, vgan2, paired=TRUE )\n",
+        "    pvalue <- wt$p.value\n",
+        "\n",
+        "    cat( isem, res$ganancia1, res$ganancia2, pvalue, \"\\n\" )\n",
+        "    flush.console()\n",
+        "    isem <- isem + 1\n",
+        "  }\n",
+        "\n",
+        "  out <- 0\n",
+        "\n",
+        "  if( pvalue < 0.05 & mean(vgan1) > mean(vgan2)  )  out <- 1\n",
+        "  if( pvalue < 0.05 & mean(vgan1) < mean(vgan2)  )  out <- 2\n",
+        "\n",
+        "\n",
+        "  return( list( \"out\" = out,\n",
+        "    \"qsemillas\" = length(vgan1),\n",
+        "    \"m1\" = mean( vgan1 ),\n",
+        "    \"m2\" = mean( vgan2 )\n",
+        "   ) )\n",
+        "}\n"
+      ],
+      "metadata": {
+        "id": "Cp8RnA_NmE8g"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# carpeta de trabajo\n",
+        "setwd(\"/content/buckets/b1/exp\")\n",
+        "experimento <- \"exp0208\"\n",
+        "dir.create(experimento, showWarnings=FALSE)\n",
+        "setwd( paste0(\"/content/buckets/b1/exp/\", experimento ))"
+      ],
+      "metadata": {
+        "id": "r1motpfOlpHM"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# lectura del dataset\n",
+        "dataset <- fread(\"/content/datasets/competencia_01.csv.gz\")\n",
+        "nrow(dataset)"
+      ],
+      "metadata": {
+        "id": "hT0LaKWumTSu"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# trabajo solo con los datos de 202104, ultimo mes con clase_ternaria completa\n",
+        "# filtro datos\n",
+        "dataset <- dataset[foto_mes==202104]\n",
+        "\n",
+        "invisible(gc(full=TRUE, verbose=FALSE)) # garbage collection\n",
+        "\n",
+        "nrow(dataset)\n",
+        "dataset[, .N, list(foto_mes,clase_ternaria)]"
+      ],
+      "metadata": {
+        "id": "h44RRyhymYR4"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "Sys.time()\n",
+        "\n",
+        "comparacion <- MejorArbol(\n",
+        "   PARAM$qsemillas_tope,\n",
+        "   PARAM$training_pct,\n",
+        "   PARAM$rpart1,\n",
+        "   PARAM$rpart2\n",
+        " )\n",
+        "\n",
+        "\n",
+        "print( comparacion )\n",
+        "\n",
+        "Sys.time()"
+      ],
+      "metadata": {
+        "id": "wsk0F77ambVW"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "### Acciones a realizar\n",
+        "* Reportar la  los resultados en la planilla colaborativa hoja  **C2-Wilcox**\n"
+      ],
+      "metadata": {
+        "id": "d2br1bgJlpHQ"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "\n",
+        "\n",
+        "---\n",
+        "\n"
+      ],
+      "metadata": {
+        "id": "x7SebtV2lpHQ"
+      }
+    }
+  ]
+}
