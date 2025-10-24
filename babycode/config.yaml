@@ -1,0 +1,57 @@
+STUDY_NAME: "competencias_1_13_gcp" 
+
+BUCKET_NAME: "/users/guadalupealesandro/TSCHOPP-PROJECT/Compe_02"
+
+competencia01:
+            DATA_PATH_: "C:\\Users\\Guada\\Desktop\\babycode\\datasets\\competencia_01_crudo.csv"
+            DATA_PATH_2: '/content/datasets/competencia_01_crudo.csv'
+            SEMILLAS: [111119, 111121, 599999, 666667, 888887]
+            MES_TRAIN: [202101, 202102]
+            MES_VAL: 202103
+            MES_TEST: 202104
+            GENERAL_TRAIN: [202101, 202102, 202103]
+            FINAL_TRAIN: [202101, 202102, 202103, 202104]
+            FINAL_PREDICT: 202106
+            GANANCIA_ACIERTO: 780000
+            COSTO_ESTIMULO: 20000
+
+params_lgb:  
+        learning_rate: [0.01, 0.3]
+        num_leaves: [20, 150]
+        max_depth: [3, 15]
+        min_child_samples: [5, 100]
+        subsample: [0.5, 1.0]
+        colsample_bytree: [0.5, 1.0]
+        max_bin: [30,31]
+        num_boost_round: [100, 500]
+        min_split_gain: [0.0, 0.1]
+        undersampling: 0.2 
+        zero_as_missing: [True, False]
+
+
+competencia02:
+            DATA_PATH_BASE_NT: "C:\\Users\\Guada\\Desktop\\babycode\\datasets\\competencia_01_crudo.csv"
+            DATA_PATH_BASE_VM: '/content/datasets/competencia_01_crudo.csv'
+            DATA_PATH_TRANS_VM: '/content/datasets/competencia_01_crudo.csv'
+            SEMILLAS: [111119, 111121, 599999, 666667, 888887]
+            MES_TRAIN: [202101, 202102, 202103, 202104] #[202010, 202011, 202012, 202101, 202102, 202103, 202104, 202105]
+            MES_VAL: 202105
+            MES_TEST: 202106
+            FINAL_TRAIN: [202101, 202102, 202103, 202104, 202105, 202106]
+            FINAL_PREDICT: 202108
+            GANANCIA_ACIERTO: 780000
+            COSTO_ESTIMULO: 20000
+            
+params_lgb_2:  
+        learning_rate: [0.01, 0.3]
+        num_leaves: [20, 150]
+        max_depth: [3, 15]
+        min_child_samples: [5, 100]
+        subsample: [0.5, 1.0]
+        colsample_bytree: [0.5, 1.0]
+        max_bin: [31]
+        num_boost_round: [100, 500]
+        min_split_gain: [0.0, 0.1]
+        undersampling: 0.2 
+        zero_as_missing: [True, False]
+        
