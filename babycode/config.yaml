@@ -1,6 +1,7 @@
-STUDY_NAME: "competencias_1_13_gcp" 
+STUDY_NAME: "competencias_2_gcp_prueba1" 
+BUCKET_NAME: '/home/guadalupealesandro/buckets/b1'
 
-BUCKET_NAME: "/users/guadalupealesandro/TSCHOPP-PROJECT/Compe_02"
+
 
 competencia01:
             DATA_PATH_: "C:\\Users\\Guada\\Desktop\\babycode\\datasets\\competencia_01_crudo.csv"
@@ -31,8 +32,8 @@ params_lgb:
 
 competencia02:
             DATA_PATH_BASE_NT: "C:\\Users\\Guada\\Desktop\\babycode\\datasets\\competencia_01_crudo.csv"
-            DATA_PATH_BASE_VM: '/content/datasets/competencia_01_crudo.csv'
-            DATA_PATH_TRANS_VM: '/content/datasets/competencia_01_crudo.csv'
+            DATA_PATH_BASE_VM: '/home/guadalupealesandro/buckets/b1/datasets/competencia_02_crudo.csv.gz'
+            DATA_PATH_TRANS_VM: '/home/guadalupealesandro/buckets/b1/datasets/'
             SEMILLAS: [111119, 111121, 599999, 666667, 888887]
             MES_TRAIN: [202101, 202102, 202103, 202104] #[202010, 202011, 202012, 202101, 202102, 202103, 202104, 202105]
             MES_VAL: 202105

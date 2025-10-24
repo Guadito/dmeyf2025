@@ -9,7 +9,7 @@ import json
 import os
 from datetime import datetime
 from .config import *
-from .gain_function import calcular_ganancia, ganancia_lgb_binary, ganancia_threshold
+from .gain_function import *
 from .output_manager import *
 from .grafico_test import *
 from .loader import *
@@ -123,7 +123,7 @@ def objetivo_ganancia(trial, df) -> float:
     logger.info(f"Trial {trial.number}: Ganancia = {ganancia_total:,.0f}")
     logger.info(f"Trial {trial.number}: Mejor iteración = {best_iter}")
     
-    guardar_iteracion_cv(trial, ganancia_total, archivo_base=None)
+    guardar_iteracion(trial, ganancia_total, archivo_base=None)
     
     return ganancia_total
 
@@ -235,7 +235,7 @@ def optimizar(df: pd.DataFrame, n_trials: int, study_name: str = None, undersamp
     # Ejecutar optimización
     if trials_a_ejecutar > 0:
         ##LO UNICO IMPORTANTE DEL METODO Y EL study CLARO
-        study.optimize(lambda trial: objetivo_ganancia(trial, df, undersampling), n_trials=trials_a_ejecutar)
+        study.optimize(lambda trial: objetivo_ganancia(trial, df), n_trials=trials_a_ejecutar)
         logger.info(f"🏆 Mejor ganancia: {study.best_value:,.0f}")
         logger.info(f"Mejores parámetros: {study.best_params}")
     else:

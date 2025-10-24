@@ -41,6 +41,7 @@ logger.info("Configuración cargada desde YAML")
 logger.info(f"STUDY_NAME: {STUDY_NAME}")
 logger.info(f"DT crudo DATA_PATH_BASE_VM: {DATA_PATH_BASE_VM}")
 logger.info(f"DT transformado DATA_PATH_2: {DATA_PATH_TRANS_VM}")
+logger.info(f"BUCKET_NAME: {BUCKET_NAME}")
 logger.info(f"SEMILLAS: {SEMILLAS}")
 logger.info(f"MES_TRAIN: {MES_TRAIN}")
 logger.info(f"MES_TEST: {MES_TEST}")
@@ -56,26 +57,26 @@ def main():
 
     
     # 1- cargar datos 
-    os.makedirs("dataset", exist_ok=True)
+    #os.makedirs(BUCKET_NAME, exist_ok=True)
     
     
     # Y realizar FE  
     df_f = cargar_datos(DATA_PATH_BASE_VM)
+    df_f = crear_clase_ternaria(df_f)
     #df_f = realizar_feature_engineering(df_f, lags = 3)
 
-    # #  #SAMPLE
-    # n_sample = 50000
-    # df_f, _ = train_test_split(
-    #     df_f,
-    #     train_size=n_sample,
-    #     stratify=df_f['clase_ternaria'],
-    #     random_state=42)
+    #  #SAMPLE
+    n_sample = 50000
+    df_f, _ = train_test_split(
+        df_f,
+        train_size=n_sample,
+        stratify=df_f['clase_ternaria'],
+        random_state=42)
 
-    df_f = crear_clase_ternaria(df_f)
     col_montos = select_col_montos(df_f)
     df_f = feature_engineering_rank_pos_batch(df_f, col_montos)
     col = [c for c in df_f.columns if c not in ['numero_de_cliente', 'foto_mes', 'clase_ternaria']]
-    df_f = feature_engineering_lag_delta_batch(df_f, col, cant_lag = 3)
+    df_f = feature_engineering_lag_delta_polars(df_f, col, cant_lag = 2)
     #df_f.to_csv(DATA_PATH_TRANS_VM)
 
 
@@ -84,7 +85,7 @@ def main():
 
     # 2 - optimización de hiperparámetros
     logger.info("=== INICIANDO OPTIMIZACIÓN DE HIPERPARAMETROS ===")
-    study = optimizar(df_f, n_trials= 100)  
+    study = optimizar(df_f, n_trials= 10)  
 
     # 3 - Aplicar wilcoxon para obtener el modelo más significativo
     logger.info("=== APLICACIÓN TEST DE WILCOXON ===")  

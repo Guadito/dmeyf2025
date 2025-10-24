@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 #-----------------------------------------------------------> guardar iteracion de la optimización bayesiana
 
-def guardar_iteracion_cv(trial, ganancia_maxima, ganancias_cv, archivo_base=None):
+def guardar_iteracion(trial, ganancia_maxima, archivo_base=None):
     """
     Guarda cada iteración de la optimización en un único archivo JSON.
   
@@ -30,10 +30,10 @@ def guardar_iteracion_cv(trial, ganancia_maxima, ganancias_cv, archivo_base=None
         'trial_number': trial.number,
         'params': trial.params,
         'num_boost_round_original': trial.user_attrs.get('num_boost_round_original'),
-        'best_iteration': trial.user_attrs.get('best_iteration', None),  # <--- lo agregamos
+        'best_iteration': trial.user_attrs.get('best_iteration', None), 
         'value': float(ganancia_maxima),
         'datetime': datetime.now().isoformat(),
-        'state': 'COMPLETE'}  # Si llegamos aquí, el trial se completó exitosamente
+        'state': 'COMPLETE'} 
     
     # Cargar datos existentes si el archivo ya existe
     if os.path.exists(archivo):

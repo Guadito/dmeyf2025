@@ -320,3 +320,82 @@ def aplicar_undersampling_clase0(
     duckdb.execute(f"SELECT setseed({seed / 1000000.0})")
     
     return result
+
+
+
+#--------------->
+
+def feature_engineering_lag_delta_polars(
+    df: pd.DataFrame, 
+    columnas: list[str], 
+    cant_lag: int = 1
+) -> pd.DataFrame:
+    """
+    
+    """
+    logger.info(f"Generando {cant_lag} lags y deltas para {len(columnas)} atributos")
+    
+    if not columnas:
+        return df
+    
+    if 'numero_de_cliente' not in df.columns or 'foto_mes' not in df.columns:
+        raise ValueError("Columnas requeridas no encontradas")
+    
+    # FILTRAR COLUMNAS QUE NO DEBEN TENER LAGS
+    columnas_excluidas = ['clase_ternaria', 
+                          'numero_de_cliente', 'foto_mes', 'periodo0']
+    
+    columnas_validas = [col for col in columnas 
+                       if col in df.columns and col not in columnas_excluidas]
+    
+    if len(columnas_validas) < len(columnas):
+        excluidas = set(columnas) - set(columnas_validas)
+        logger.warning(f"Columnas excluidas o no encontradas: {excluidas}")
+    
+    logger.info(f"Procesando {len(columnas_validas)} columnas válidas")
+    
+    # Convertir a Polars LazyFrame
+    logger.info("Convirtiendo a Polars LazyFrame...")
+    df_pl = pl.from_pandas(df).lazy()
+    
+    # Calcular periodo0
+    df_pl = df_pl.with_columns(
+        ((pl.col("foto_mes") // 100) * 12 + (pl.col("foto_mes") % 100)).alias("periodo0")
+    )
+    
+    # Construir expresiones
+    logger.info(f"Construyendo expresiones para {len(columnas_validas)} columnas...")
+    expresiones = []
+    
+    for attr in columnas_validas:
+        for j in range(1, cant_lag + 1):
+            # Lag
+            expresiones.append(
+                pl.col(attr)
+                .shift(j)
+                .over("numero_de_cliente", order_by="periodo0")
+                .cast(pl.Float32)
+                .alias(f"{attr}_lag_{j}")
+            )
+            # Delta
+            expresiones.append(
+                (pl.col(attr) - pl.col(attr).shift(j).over("numero_de_cliente", order_by="periodo0"))
+                .cast(pl.Float32)
+                .alias(f"{attr}_delta_{j}")
+            )
+    
+    # Aplicar transformaciones
+    logger.info(f"Aplicando {len(expresiones)} transformaciones...")
+    df_pl = df_pl.with_columns(expresiones)
+    
+    # Ejecutar
+    logger.info("Ejecutando query optimizada...")
+    df_result = df_pl.collect().to_pandas()
+    
+    import gc
+    gc.collect()
+    
+    logger.info(f"Completado: {df_result.shape}")
+    logger.info(f"Nuevas columnas creadas: {len(expresiones)}")
+    
+    return df_result
