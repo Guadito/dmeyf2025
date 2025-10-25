@@ -91,8 +91,13 @@ def ganancia_ordenada (y_pred, y_true) -> float:
 
     # Ordenar por probabilidad descendente y encontrar ganancia máxima
     df_ordenado = df_eval.sort('y_pred_proba', descending=True)
-    df_ordenado = df_ordenado.with_columns((pl.when(pl.col('y_true') == 1).then(GANANCIA_ACIERTO).otherwise(-COSTO_ESTIMULO)).alias('ganancia_individual'))
-    df_ordenado = df_ordenado.with_columns(pl.col('ganancia_individual').cum_sum().alias('ganancia_acumulada'))
+    df_ordenado = df_ordenado.with_columns([pl.when(pl.col('y_true') == 1) 
+                                            .then(pl.lit(780000, dtype=pl.Int64))
+                                            .otherwise(pl.lit(-20000, dtype=pl.Int64))
+                                            .alias('ganancia_individual')])
+    df_ordenado = df_ordenado.with_columns(pl.col('ganancia_individual')
+                                           .cum_sum()
+                                           .alias('ganancia_acumulada'))
     ganancia_maxima = df_ordenado.select(pl.col('ganancia_acumulada').max()).item()
 
     return 'ganancia', ganancia_maxima, True

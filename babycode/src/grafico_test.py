@@ -102,10 +102,9 @@ def crear_grafico_ganancia_avanzado(y_true: np.ndarray, y_pred_proba: np.ndarray
     # Guardar gráfico con timestamp
     resultados_dir = os.path.join(BUCKET_NAME, "resultados")
     os.makedirs(resultados_dir, exist_ok=True)
-    
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    ruta_datos = os.path.join(resultados_dir, f"{STUDY_NAME}_ganancia_avanzado_{timestamp}.png")
-  
+    ruta_archivo = os.path.join(resultados_dir, f"{STUDY_NAME}_ganancia_avanzado_{timestamp}.png")  
     plt.savefig(ruta_archivo, dpi=300, bbox_inches='tight', facecolor='white')
     plt.close()
   

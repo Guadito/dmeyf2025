@@ -16,14 +16,14 @@ from src.kaggle import *
 import gc
 
 
-## config basico logging
+
+# Crear carpeta de logs dentro del bucket
 log_dir = os.path.join(BUCKET_NAME, "log")
 os.makedirs(log_dir, exist_ok=True)
 
 fecha = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
 nombre_log = f"log_{STUDY_NAME}_{fecha}.log"
 ruta_log = os.path.join(log_dir, nombre_log)
-
 
 logging.basicConfig(
     level=logging.INFO,
@@ -63,6 +63,7 @@ def main():
     # 1- cargar datos 
     #os.makedirs(BUCKET_NAME, exist_ok=True)
     
+    
     # Y realizar FE  
     df_f = cargar_datos(DATA_PATH_BASE_VM)
     df_f = crear_clase_ternaria(df_f)
@@ -88,7 +89,7 @@ def main():
 
     # 2 - optimización de hiperparámetros
     logger.info("=== INICIANDO OPTIMIZACIÓN DE HIPERPARAMETROS ===")
-    study = optimizar(df_f, n_trials= 10)  
+    study = optimizar(df_f, n_trials= 50)  
 
     # 3 - Aplicar wilcoxon para obtener el modelo más significativo
     logger.info("=== APLICACIÓN TEST DE WILCOXON ===")  
@@ -98,7 +99,6 @@ def main():
 
     # 4 - Evaluar modelo en test
     params_best_model = resultado['mejor_params']
-    #resultados_test, y_pred_binary, y_test, y_pred_prob, umbral_optimo = evaluar_modelo_optimizado(df_f, params_best_model)
     resultados_test, y_pred_binary, y_test, y_pred_prob = evaluar_en_test(df_f, params_best_model)
 
     
