@@ -3,6 +3,7 @@ import os
 import logging
 from datetime import datetime
 from .config import STUDY_NAME
+from .config import BUCKET_NAME
 import json
 
 logger = logging.getLogger(__name__)
@@ -23,8 +24,13 @@ def guardar_iteracion(trial, ganancia_maxima, archivo_base=None):
         archivo_base = STUDY_NAME
   
     # Nombre del archivo único para todas las iteraciones
-    archivo = f"resultados/{archivo_base}_iteraciones.json"
-  
+    resultados_dir = os.path.join(BUCKET_NAME, "resultados")
+    os.makedirs(resultados_dir, exist_ok=True)
+
+    # Nombre del archivo único para todas las iteraciones
+    archivo = os.path.join(resultados_dir, f"{archivo_base}_iteraciones.json")
+
+    
     # Datos de esta iteración
     iteracion_data = {
         'trial_number': trial.number,
@@ -67,9 +73,14 @@ def guardar_resultados_test(resultados_test:dict, archivo_base=None):
 
     if archivo_base is None:
         archivo_base = STUDY_NAME
-  
+
     # Nombre del archivo único para todas las iteraciones
-    archivo = f"resultados/{archivo_base}_test_results.json"
+    resultados_dir = os.path.join(BUCKET_NAME, "resultados")
+    os.makedirs(resultados_dir, exist_ok=True)
+
+    # Nombre del archivo único para todas las iteraciones
+    archivo = os.path.join(resultados_dir, f"{archivo_base}_test_results.json")
+  
      
     # Cargar datos existentes si el archivo ya existe
     if os.path.exists(archivo):
@@ -107,16 +118,19 @@ def guardar_predicciones_finales(resultados_df: pd.DataFrame, nombre_archivo=Non
     Returns:
         str: Ruta del archivo guardado
     """
-    # Crear carpeta predict si no existe
-    os.makedirs("predict", exist_ok=True)
+
     
+    # Crear carpeta predict si no existe
+    predict_dir = os.path.join(BUCKET_NAME, "predict")
+    os.makedirs(predict_dir, exist_ok=True)
+     
     # Definir nombre del archivo
     if nombre_archivo is None:
         nombre_archivo = STUDY_NAME
     
     # Agregar timestamp para evitar sobrescribir
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    ruta_archivo = f"predict/{nombre_archivo}_{timestamp}.csv"
+    ruta_archivo = os.path.join(predict_dir, f"{nombre_archivo}_{timestamp}.csv")
     
     # Validar formato del DataFrame
     if not isinstance(resultados_df, pd.DataFrame):

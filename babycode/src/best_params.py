@@ -1,6 +1,8 @@
+import os
 import json
 import logging
 from .config import STUDY_NAME
+from .config import BUCKET_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +24,10 @@ def cargar_mejores_hiperparametros(archivo_base: str = None, n_top: int = 1) -> 
     
     if archivo_base is None:
         archivo_base = STUDY_NAME
-  
-    archivo = f"resultados/{archivo_base}_iteraciones.json"
+    
+    # Ruta del archivo dentro del bucket
+    resultados_dir = os.path.join(BUCKET_NAME, "resultados")
+    archivo = os.path.join(resultados_dir, f"{archivo_base}_iteraciones.json")
   
     try:
         with open(archivo, 'r') as f:
@@ -78,6 +82,10 @@ def obtener_estadisticas_optuna(archivo_base=None):
     """
     if archivo_base is None:
         archivo_base = STUDY_NAME
+
+    # Ruta del archivo dentro del bucket
+    resultados_dir = os.path.join(BUCKET_NAME, "resultados")
+    archivo = os.path.join(resultados_dir, f"{archivo_base}_iteraciones.json")
   
     archivo = f"resultados/{archivo_base}_iteraciones.json"
   
