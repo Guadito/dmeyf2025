@@ -17,15 +17,19 @@ import gc
 
 
 ## config basico logging
-os.makedirs("logs", exist_ok=True)
+log_dir = os.path.join(BUCKET_NAME, "log")
+os.makedirs(log_dir, exist_ok=True)
+
 fecha = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
 nombre_log = f"log_{STUDY_NAME}_{fecha}.log"
+ruta_log = os.path.join(log_dir, nombre_log)
+
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(name)s %(lineno)d - %(message)s',
     handlers=[
-        logging.FileHandler("logs/" + nombre_log),
+        logging.FileHandler(ruta_log),
         logging.StreamHandler()
     ]
 )
@@ -58,7 +62,6 @@ def main():
     
     # 1- cargar datos 
     #os.makedirs(BUCKET_NAME, exist_ok=True)
-    
     
     # Y realizar FE  
     df_f = cargar_datos(DATA_PATH_BASE_VM)

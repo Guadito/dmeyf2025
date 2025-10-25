@@ -100,15 +100,18 @@ def crear_grafico_ganancia_avanzado(y_true: np.ndarray, y_pred_proba: np.ndarray
     plt.tight_layout()
   
     # Guardar gráfico con timestamp
+    resultados_dir = os.path.join(BUCKET_NAME, "resultados")
+    os.makedirs(resultados_dir, exist_ok=True)
+    
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    os.makedirs("resultados", exist_ok=True)
-    ruta_archivo = f"resultados/{STUDY_NAME}_ganancia_avanzado_{timestamp}.png"
+    ruta_datos = os.path.join(resultados_dir, f"{STUDY_NAME}_ganancia_avanzado_{timestamp}.png")
   
     plt.savefig(ruta_archivo, dpi=300, bbox_inches='tight', facecolor='white')
     plt.close()
   
+
     # Guardar datos del gráfico en CSV
-    ruta_datos = f"resultados/{STUDY_NAME}_datos_ganancia_{timestamp}.csv"
+    ruta_datos = os.path.join(resultados_dir, f"{STUDY_NAME}_datos_ganancia_{timestamp}.csv")
     df_datos = pd.DataFrame({
         'posicion': range(len(ganancias_acumuladas)),
         'ganancia_acumulada': ganancias_acumuladas,
@@ -246,8 +249,12 @@ def graficar_importances_test(model, top_n: int = 50):
    
     # Guardar gráfico con timestamp
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    os.makedirs("resultados", exist_ok=True)
-    ruta_archivo = f"resultados/feature_importance_{STUDY_NAME}_{timestamp}.png"
+
+    # Guardar gráfico con timestamp
+    resultados_dir = os.path.join(BUCKET_NAME, "resultados")
+    os.makedirs(resultados_dir, exist_ok=True)
+    ruta_archivo = os.path.join(resultados_dir, f"feature_importance_{STUDY_NAME}_{timestamp}.png")
+    
    
     plt.savefig(ruta_archivo, dpi=300, bbox_inches='tight', facecolor='white')
     logger.info(f"Gráfico guardado en: {ruta_archivo}")

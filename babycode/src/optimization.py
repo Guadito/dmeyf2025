@@ -317,7 +317,7 @@ def evaluar_wilcoxon(df: pd.DataFrame, top_params: list, n_seeds: int = 10) -> d
             if num_boost_round is None:
                 num_boost_round = params_copy.pop('num_boost_round', 200)
 
-            # Crear Dataset con los parámetros que afectan su construcción
+
             train_data = lgb.Dataset(X_train, label=y_train)
             val_data = lgb.Dataset(X_val, label=y_val, reference=train_data)
 
@@ -325,7 +325,7 @@ def evaluar_wilcoxon(df: pd.DataFrame, top_params: list, n_seeds: int = 10) -> d
                 params_copy, 
                 train_data,
                 num_boost_round=num_boost_round, 
-                feval=ganancia_threshold,
+                feval=ganancia_ordenada,
                 callbacks=[lgb.log_evaluation(0)]
             )
 
@@ -394,15 +394,19 @@ def evaluar_en_test (df: pd.DataFrame, mejores_params:dict) -> tuple:
     Returns:
         dict: Resultados de la evaluación en test (ganancia + estadísticas básicas)
     """
-    logger.info(f"Período de test: {MES_TEST}")
+    logger.info(f"INICIANDO EVALUACIÓN EN TEST")
   
     # Preparar datos de entrenamiento (TRAIN + VALIDACION)
     if isinstance(MES_TRAIN, list):
         periodos_entrenamiento = MES_TRAIN + [MES_VAL]
     else:
         periodos_entrenamiento = [MES_TRAIN, MES_VAL]
-  
 
+    
+    logger.info(f"Períodos de entrenamiento: {periodos_entrenamiento}")
+    logger.info(f"Período de test: {MES_TEST}")
+
+    
     df_train_completo = df[df['foto_mes'].isin(periodos_entrenamiento)]
     df_test = df[df['foto_mes'] == MES_TEST]
 
@@ -469,7 +473,7 @@ def evaluar_en_test (df: pd.DataFrame, mejores_params:dict) -> tuple:
         'precision': float(precision),
         'recall': float(recall),
         'accuracy': float(accuracy),
-        'timestamp': datetime.now().isoformat()
+        'timestamp': datetime.datetime.now().isoformat()
     }
   
     guardar_resultados_test(resultados_test)
