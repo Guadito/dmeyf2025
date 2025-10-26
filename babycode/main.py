@@ -34,10 +34,8 @@ logging.basicConfig(
     ]
 )
 
-
 logger = logging.getLogger(__name__)
 logger.info("Iniciando programa de optimización con log fechado")
-
 
 
 ### Manejo de Configuración en YAML ###
@@ -48,8 +46,8 @@ logger.info(f"DT transformado DATA_PATH_2: {DATA_PATH_TRANS_VM}")
 logger.info(f"BUCKET_NAME: {BUCKET_NAME}")
 logger.info(f"SEMILLAS: {SEMILLAS}")
 logger.info(f"MES_TRAIN: {MES_TRAIN}")
-logger.info(f"MES_TEST: {MES_TEST}")
 logger.info(f"MES_VAL: {MES_VAL}")
+logger.info(f"MES_TEST: {MES_TEST}")
 logger.info(f"TRAIN_FINAL: {FINAL_TRAIN}")
 logger.info(f"GANANCIA_ACIERTO: {GANANCIA_ACIERTO}")
 logger.info(f"COSTO_ESTIMULO: {COSTO_ESTIMULO}")
@@ -58,7 +56,6 @@ logger.info(f"COSTO_ESTIMULO: {COSTO_ESTIMULO}")
 
 def main():
     logger.info("Inicio de ejecucion.")
-
     
     # 1- cargar datos 
     #os.makedirs(BUCKET_NAME, exist_ok=True)
@@ -70,19 +67,19 @@ def main():
     #df_f = realizar_feature_engineering(df_f, lags = 3)
 
     #  #SAMPLE
-    n_sample = 50000
-    df_f, _ = train_test_split(
-        df_f,
-        train_size=n_sample,
-        stratify=df_f['clase_ternaria'],
-        random_state=42)
+    #n_sample = 50000
+    #df_f, _ = train_test_split(
+    #    df_f,
+    #    train_size=n_sample,
+    #    stratify=df_f['clase_ternaria'],
+    #    random_state=42)
 
     col_montos = select_col_montos(df_f)
     df_f = feature_engineering_rank_pos_batch(df_f, col_montos)
     col = [c for c in df_f.columns if c not in ['numero_de_cliente', 'foto_mes', 'clase_ternaria']]
     df_f = feature_engineering_lag_delta_polars(df_f, col, cant_lag = 2)
     col = [c for c in df_f.columns if c not in ['numero_de_cliente', 'foto_mes', 'clase_ternaria']]
-    df_f = feature_engineering_rolling_mean(df_f, col, ventana = 3)
+    #df_f = feature_engineering_rolling_mean(df_f, col, ventana = 3)
     #df_f.to_csv(DATA_PATH_TRANS_VM)
 
 

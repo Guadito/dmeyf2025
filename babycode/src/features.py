@@ -343,7 +343,6 @@ def feature_engineering_lag_delta_polars(
     if 'numero_de_cliente' not in df.columns or 'foto_mes' not in df.columns:
         raise ValueError("Columnas requeridas no encontradas")
     
-    # FILTRAR COLUMNAS QUE NO DEBEN TENER LAGS
     columnas_excluidas = ['clase_ternaria', 
                           'numero_de_cliente', 'foto_mes', 'periodo0']
     
@@ -357,7 +356,6 @@ def feature_engineering_lag_delta_polars(
     logger.info(f"Procesando {len(columnas_validas)} columnas válidas")
     
     # Convertir a Polars LazyFrame
-    logger.info("Convirtiendo a Polars LazyFrame...")
     df_pl = pl.from_pandas(df).lazy()
     
     # Calcular periodo0
@@ -365,8 +363,6 @@ def feature_engineering_lag_delta_polars(
         ((pl.col("foto_mes") // 100) * 12 + (pl.col("foto_mes") % 100)).alias("periodo0")
     )
     
-    # Construir expresiones
-    logger.info(f"Construyendo expresiones para {len(columnas_validas)} columnas...")
     expresiones = []
     
     for attr in columnas_validas:
@@ -387,11 +383,10 @@ def feature_engineering_lag_delta_polars(
             )
     
     # Aplicar transformaciones
-    logger.info(f"Aplicando {len(expresiones)} transformaciones...")
     df_pl = df_pl.with_columns(expresiones)
     
     # Ejecutar
-    logger.info("Ejecutando query optimizada...")
+    logger.info("Ejecutando query")
     df_result = df_pl.collect().to_pandas()
     
     import gc

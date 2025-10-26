@@ -1,4 +1,4 @@
-STUDY_NAME: "competencias_2_gcp_prueba1" 
+STUDY_NAME: "competencias_2_gcp_baseline" 
 BUCKET_NAME: '/home/guadalupealesandro/buckets/b1'
 
 
@@ -35,11 +35,11 @@ competencia02:
             DATA_PATH_BASE_VM: '/home/guadalupealesandro/buckets/b1/datasets/competencia_02_crudo.csv.gz'
             DATA_PATH_TRANS_VM: '/home/guadalupealesandro/buckets/b1/datasets/'
             SEMILLAS: [111119, 111121, 599999, 666667, 888887]
-            MES_TRAIN: [202101, 202102, 202103, 202104, 202105, 202106]
-            MES_VAL: 202107
-            MES_TEST: 202108
-            FINAL_TRAIN: [202101, 202102, 202103, 202104, 202105, 202106, 202107, 202108] #agregar 202109?
-            FINAL_PREDICT: 202110
+            MES_TRAIN: [202101, 202102, 202103, 202104]
+            MES_VAL: 202105
+            MES_TEST: 202106
+            FINAL_TRAIN: [202101, 202102, 202103, 202104, 202105, 202106] #agregar 202107?S
+            FINAL_PREDICT: 202108
             GANANCIA_ACIERTO: 780000
             COSTO_ESTIMULO: 20000
             
