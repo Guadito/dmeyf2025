@@ -26,7 +26,9 @@ def realizar_feature_engineering (df: pd.DataFrame, lags:int = 1) -> pd.DataFram
     df = feature_engineering_rank_pos_batch(df, col_montos)
 
     col = [c for c in df.columns if c not in ['numero_de_cliente', 'foto_mes', 'clase_ternaria']]
+    df = feature_engineering_rolling_mean(df, col, ventana=3)
     df = feature_engineering_lag_delta_batch(df, col, cant_lag = lags)
+    
 
     return df
     
@@ -404,13 +406,14 @@ def feature_engineering_lag_delta_polars(
 # ---------------------->  Medias móviles
 
 def feature_engineering_rolling_mean(df, columnas_validas, ventana=3):
+    logger.info(f"Realizando medias móviles a {len(columnas_validas)} columnas. Promedio de {len(ventana)} meses ")
+    
     df_pl = pl.from_pandas(df).lazy()
 
     # Crear periodo0 si no existe
     if 'periodo0' not in df.columns:
         df_pl = df_pl.with_columns(
-            ((pl.col("foto_mes") // 100) * 12 + (pl.col("foto_mes") % 100)).alias("periodo0")
-        )
+            ((pl.col("foto_mes") // 100) * 12 + (pl.col("foto_mes") % 100)).alias("periodo0"))
         drop_periodo0 = True
     else:
         drop_periodo0 = False
