@@ -399,3 +399,36 @@ def feature_engineering_lag_delta_polars(
     logger.info(f"Nuevas columnas creadas: {len(expresiones)}")
     
     return df_result
+
+
+# ---------------------->  Medias móviles
+
+def feature_engineering_rolling_mean(df, columnas_validas, ventana=3):
+    df_pl = pl.from_pandas(df).lazy()
+
+    # Crear periodo0 si no existe
+    if 'periodo0' not in df.columns:
+        df_pl = df_pl.with_columns(
+            ((pl.col("foto_mes") // 100) * 12 + (pl.col("foto_mes") % 100)).alias("periodo0")
+        )
+        drop_periodo0 = True
+    else:
+        drop_periodo0 = False
+
+    # Expresiones rolling
+    expresiones = [
+        pl.col(col).shift(1)
+        .rolling_mean(window_size=ventana, min_periods=1)
+        .over("numero_de_cliente", order_by="periodo0")
+        .alias(f"{col}_rolling_mean_{ventana}")
+        for col in columnas_validas
+    ]
+
+    df_pl = df_pl.with_columns(expresiones)
+
+    if drop_periodo0:
+        df_pl = df_pl.drop("periodo0")
+
+    df_result = df_pl.collect().to_pandas()
+    gc.collect()
+    return df_result
