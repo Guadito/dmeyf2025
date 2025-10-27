@@ -51,6 +51,7 @@ logger.info(f"MES_TEST: {MES_TEST}")
 logger.info(f"TRAIN_FINAL: {FINAL_TRAIN}")
 logger.info(f"GANANCIA_ACIERTO: {GANANCIA_ACIERTO}")
 logger.info(f"COSTO_ESTIMULO: {COSTO_ESTIMULO}")
+logger.info(f"Undersampling continua: {undersampling}")
 
 
 

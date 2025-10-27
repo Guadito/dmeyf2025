@@ -4,6 +4,7 @@ import pandas as pd
 from .config import *
 import logging
 import polars as pl
+import gc
 
 logger = logging.getLogger(__name__)
 

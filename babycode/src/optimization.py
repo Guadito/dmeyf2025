@@ -14,6 +14,7 @@ from .output_manager import *
 from .grafico_test import *
 from .loader import *
 from .features import aplicar_undersampling_clase0
+import gc
 
 
 logger = logging.getLogger(__name__)

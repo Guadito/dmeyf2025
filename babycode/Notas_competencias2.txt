@@ -1,0 +1,3 @@
+0 - BASELINE Optuna : 17900000:                                          2 lags, undersampling 0.2, rank pos
+1 - Agrego medias móviles x 3 meses: 17500000 competencias_2_gcp_1         2 lags, undersampling 0.2, rank pos
+2 - Saco medias móviles, undersampling 0.5 competencias_2_gcp_2          2 lags, undersampling 0.5, rank pos

@@ -11,6 +11,7 @@ import duckdb
 import pandas as pd 
 import polars as pl
 from .loader import crear_clase_ternaria 
+import gc
 
 
 
@@ -401,7 +402,7 @@ def feature_engineering_lag_delta_polars(
 # ---------------------->  Medias móviles
 
 def feature_engineering_rolling_mean(df, columnas_validas, ventana=3):
-    logger.info(f"Realizando medias móviles a {len(columnas_validas)} columnas. Promedio de {len(ventana)} meses ")
+    logger.info(f"Realizando medias móviles a {len(columnas_validas)} columnas. Promedio de {ventana} meses ")
     
     df_pl = pl.from_pandas(df).lazy()
 
@@ -428,5 +429,7 @@ def feature_engineering_rolling_mean(df, columnas_validas, ventana=3):
         df_pl = df_pl.drop("periodo0")
 
     df_result = df_pl.collect().to_pandas()
+    logger.info(f"Completado: {df_result.shape[0]:,} filas x {df_result.shape[1]:,} columnas")
+    
     gc.collect()
     return df_result

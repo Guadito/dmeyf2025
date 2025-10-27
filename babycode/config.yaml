@@ -53,6 +53,6 @@ params_lgb_2:
         max_bin: [31]
         num_boost_round: [100, 500]
         min_split_gain: [0.0, 0.1]
-        undersampling: 0.2 
+        undersampling: 0.5 
         zero_as_missing: [True, False]
         
