@@ -51,7 +51,7 @@ logger.info(f"MES_TEST: {MES_TEST}")
 logger.info(f"TRAIN_FINAL: {FINAL_TRAIN}")
 logger.info(f"GANANCIA_ACIERTO: {GANANCIA_ACIERTO}")
 logger.info(f"COSTO_ESTIMULO: {COSTO_ESTIMULO}")
-logger.info(f"Undersampling continua: {undersampling}")
+logger.info(f"Undersampling clientes continua: {undersampling}")
 
 
 
@@ -88,8 +88,8 @@ def main():
     #df_f = cargar_datos(DATA_PATH_TRANS_VM)
 
     # 2 - optimización de hiperparámetros
-    logger.info("=== INICIANDO OPTIMIZACIÓN DE HIPERPARAMETROS ===")
-    study = optimizar(df_f, n_trials= 50)  
+    #logger.info("=== INICIANDO OPTIMIZACIÓN DE HIPERPARAMETROS ===")
+    #study = optimizar(df_f, n_trials= 50)  
 
     # 3 - Aplicar wilcoxon para obtener el modelo más significativo
     logger.info("=== APLICACIÓN TEST DE WILCOXON ===")  
@@ -145,7 +145,7 @@ def main():
     logger.info("Generar predicciones finales")
 
     generar_predicciones_finales_por_umbral(modelo_final, X_predict, clientes_predict, umbrales=[0.020, 0.025, 0.029, 0.032])
-    generar_predicciones_por_cantidad(modelo_final, X_predict, clientes_predict, cantidades = [9000, 9500, 10000, 10500, 12000, 12500, 13000])
+    generar_predicciones_por_cantidad(modelo_final, X_predict, clientes_predict, cantidades = [9000, 9500, 10000, 10500, 12000, 12500, 13000, 16000, 18000])
 
     # 4 Guardar el DataFrame resultante
     #path = "Data/competencia_01_lag.csv"

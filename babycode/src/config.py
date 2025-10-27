@@ -31,6 +31,7 @@ try:
     GENERAL_TRAIN = _cfg.get("GENERAL_TRAIN", [])
     FINAL_TRAIN = _cfg.get("FINAL_TRAIN", [])
     FINAL_PREDICT = _cfg.get("FINAL_PREDICT", "")
+    undersampling = PARAMETROS_LGBM.get("undersampling", [])
 
 except Exception as e:
     logger.error(f"Error al cargar el archivo de configuracion: {e}")

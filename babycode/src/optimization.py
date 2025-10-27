@@ -331,8 +331,8 @@ def evaluar_wilcoxon(df: pd.DataFrame, top_params: list, n_seeds: int = 10) -> d
             )
 
             y_pred_prob = model.predict(X_val)
-            ganancias_acum = calcular_ganancia(y_val, y_pred_prob)
-            g = ganancias_acum.max()  # Solo la ganancia máxima
+            y_pred_binary = (y_pred_prob > 0.025).astype(int) 
+            g = calcular_ganancia(y_val, y_pred_binary) 
             ganancias.append(g)
 
         ganancias_top.append(ganancias)
