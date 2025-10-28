@@ -80,7 +80,7 @@ def main():
     col = [c for c in df_f.columns if c not in ['numero_de_cliente', 'foto_mes', 'clase_ternaria']]
     df_f = feature_engineering_lag_delta_polars(df_f, col, cant_lag = 2)
     col = [c for c in df_f.columns if c not in ['numero_de_cliente', 'foto_mes', 'clase_ternaria']]
-    #df_f = feature_engineering_rolling_mean(df_f, col, ventana = 3)
+    df_f = feature_engineering_rolling_mean(df_f, col, ventana = 3)
     #df_f.to_csv(DATA_PATH_TRANS_VM)
 
 
@@ -88,8 +88,8 @@ def main():
     #df_f = cargar_datos(DATA_PATH_TRANS_VM)
 
     # 2 - optimización de hiperparámetros
-    #logger.info("=== INICIANDO OPTIMIZACIÓN DE HIPERPARAMETROS ===")
-    #study = optimizar(df_f, n_trials= 50)  
+    logger.info("=== INICIANDO OPTIMIZACIÓN DE HIPERPARAMETROS ===")
+    study = optimizar(df_f, n_trials= 50)  
 
     # 3 - Aplicar wilcoxon para obtener el modelo más significativo
     logger.info("=== APLICACIÓN TEST DE WILCOXON ===")  

@@ -1,3 +1,3 @@
-0 - BASELINE Optuna 259,860,000     2 lags, undersampling 0.2, rank pos  competencias_2_gcp_baseline
-1 - Sumo medias móviles x3: 17500000          2 lags, undersampling 0.2, rank pos  competencias_2_gcp_1_completo
-2 - Saco medias móviles, undersampling 0.5 competencias_2_gcp_2          2 lags, undersampling 0.5, rank pos
+0 - BASELINE: 2 lags, undersampling 0.2, rank pos  competencias_2_gcp_baseline  259,860,000 en test
+1 - Sumo medias móviles x3, 2 lags, undersampling 0.2, rank pos competencias_2_gcp_1_completo 282,100,000 en test
+2 - 
