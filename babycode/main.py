@@ -117,7 +117,7 @@ def main():
     logger.info("=== GENERANDO TABLA DE DECISIÓN DE CORTE ===")
     
 
-    cortes = [9000, 9500, 10000, 10500]
+    cortes = [9000, 9500, 10000, 10500, 12000, 12500, 13000, 16000, 18000]
 
     df_resultados = simular_cortes_kaggle(
     y_pred_prob=y_pred_prob,
