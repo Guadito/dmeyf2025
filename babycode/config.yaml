@@ -1,5 +1,5 @@
-STUDY_NAME: "competencias_2_gcp_2" 
-BUCKET_NAME: '/home/guadalupealesandro/buckets/b1'
+STUDY_NAME: "competencias_2_gcp_3" 
+BUCKET_NAME: '/home/guadalesandro/buckets/b1'
 
 
 
@@ -32,8 +32,8 @@ params_lgb:
 
 competencia02:
             DATA_PATH_BASE_NT: "C:\\Users\\Guada\\Desktop\\babycode\\datasets\\competencia_02_crudo.csv"
-            DATA_PATH_BASE_VM: '/home/guadalupealesandro/buckets/b1/datasets/competencia_02_crudo.csv.gz'
-            DATA_PATH_TRANS_VM: '/home/guadalupealesandro/buckets/b1/datasets/'
+            DATA_PATH_BASE_VM: '/home/guadalesandro/buckets/b1/datasets/competencia_02_crudo.csv.gz'
+            DATA_PATH_TRANS_VM: '/home/guadalesandro/buckets/b1/datasets/'
             SEMILLAS: [111119, 111121, 599999, 666667, 888887]
             MES_TRAIN: [202101, 202102, 202103, 202104]
             MES_VAL: 202105
@@ -46,7 +46,7 @@ competencia02:
 params_lgb_2:  
         learning_rate: [0.01, 0.3]
         num_leaves: [20, 150]
-        max_depth: [3, 15]
+        max_depth: [-1]
         min_child_samples: [5, 100]
         subsample: [0.5, 1.0]
         colsample_bytree: [0.5, 1.0]
