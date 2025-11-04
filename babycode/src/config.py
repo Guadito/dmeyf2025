@@ -12,7 +12,7 @@ PATH_CONFIG = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.y
 try:
     with open(PATH_CONFIG, "r") as file:
         _cfgGeneral = yaml.safe_load(file)    # <-- Lee el YAML
-        _cfg = _cfgGeneral["competencia02"]    # <-- Selecciona la sección competencia01
+        _cfg = _cfgGeneral["competencia02"]   
         PARAMETROS_LGBM = _cfgGeneral["params_lgb_2"] 
 
 

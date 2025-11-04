@@ -51,8 +51,8 @@ def objetivo_ganancia(trial, df) -> float:
         'max_bin': PARAMETROS_LGBM['max_bin'], 
         'learning_rate': trial.suggest_float('learning_rate', PARAMETROS_LGBM['learning_rate'][0], PARAMETROS_LGBM['learning_rate'][1]),
         'num_leaves': trial.suggest_int('num_leaves', PARAMETROS_LGBM['num_leaves'][0], PARAMETROS_LGBM['num_leaves'][1]),
-        'max_depth': PARAMETROS_LGBM['max_depth'],
-        #'max_depth': trial.suggest_int('max_depth', PARAMETROS_LGBM['max_depth'][0], PARAMETROS_LGBM['max_depth'][1]),
+        #'max_depth': PARAMETROS_LGBM['max_depth'],
+        'max_depth': trial.suggest_int('max_depth', PARAMETROS_LGBM['max_depth'][0], PARAMETROS_LGBM['max_depth'][1]),
         'min_child_samples': trial.suggest_int('min_child_samples', PARAMETROS_LGBM['min_child_samples'][0], PARAMETROS_LGBM['min_child_samples'][1]),
         'subsample': trial.suggest_float('subsample', PARAMETROS_LGBM['subsample'][0], PARAMETROS_LGBM['subsample'][1]),
         'colsample_bytree': trial.suggest_float('colsample_bytree', PARAMETROS_LGBM['colsample_bytree'][0], PARAMETROS_LGBM['colsample_bytree'][1]),
@@ -81,8 +81,8 @@ def objetivo_ganancia(trial, df) -> float:
 
 
     #Convierto a binaria la clase ternaria 
-    df_train = convertir_clase_ternaria_a_target(df_train, baja_2_1=True) # Entreno el modelo con Baja+1 y Baja+2 == 1
-    df_val = convertir_clase_ternaria_a_target(df_val, baja_2_1=False) # valido la ganancia solamente con Baja+2 == 1
+    df_train = convertir_clase_ternaria_a_target_polars(df_train, baja_2_1=True) # Entreno el modelo con Baja+1 y Baja+2 == 1
+    df_val = convertir_clase_ternaria_a_target_polars(df_val, baja_2_1=False) # valido la ganancia solamente con Baja+2 == 1
 
     #Subsampleo
     df_train = aplicar_undersampling_clase0(df_train, undersampling)
@@ -293,8 +293,8 @@ def evaluar_wilcoxon(df: pd.DataFrame, top_params: list, n_seeds: int = 10) -> d
     df_val = df[df['foto_mes'] == MES_VAL]
 
 
-    df_train = convertir_clase_ternaria_a_target(df_train, baja_2_1=True) # Entreno el modelo con Baja+1 y Baja+2 == 1
-    df_val = convertir_clase_ternaria_a_target(df_val, baja_2_1=False) # valido la ganancia solamente con Baja+2 == 1
+    df_train = convertir_clase_ternaria_a_target_polars(df_train, baja_2_1=True) # Entreno el modelo con Baja+1 y Baja+2 == 1
+    df_val = convertir_clase_ternaria_a_target_polars(df_val, baja_2_1=False) # valido la ganancia solamente con Baja+2 == 1
 
     
     X_train = df_train.drop(columns=['clase_ternaria'])
@@ -413,8 +413,8 @@ def evaluar_en_test (df: pd.DataFrame, mejores_params:dict) -> tuple:
     df_test = df[df['foto_mes'] == MES_TEST]
 
 
-    df_train_completo = convertir_clase_ternaria_a_target(df_train_completo, baja_2_1=True) # Entreno el modelo con Baja+1 y Baja+2 == 1
-    df_test = convertir_clase_ternaria_a_target(df_test, baja_2_1=False) # valido la ganancia solamente con Baja+2 == 1
+    df_train_completo = convertir_clase_ternaria_a_target_polars(df_train_completo, baja_2_1=True) # Entreno el modelo con Baja+1 y Baja+2 == 1
+    df_test = convertir_clase_ternaria_a_target_polars(df_test, baja_2_1=False) # valido la ganancia solamente con Baja+2 == 1
 
     X_train_completo = df_train_completo.drop(columns = ['clase_ternaria'])
     y_train_completo = df_train_completo['clase_ternaria']

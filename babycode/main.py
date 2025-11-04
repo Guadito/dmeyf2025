@@ -14,6 +14,7 @@ from src.grafico_test import *
 from src.final_training import *
 from src.kaggle import *
 import gc
+from pathlib import Path
 
 
 
@@ -81,8 +82,7 @@ def main():
     df_f = feature_engineering_lag_delta_polars(df_f, col, cant_lag = 2)
     col = [c for c in df_f.columns if c not in ['numero_de_cliente', 'foto_mes', 'clase_ternaria']]
     df_f = feature_engineering_rolling_mean(df_f, col, ventana = 3)
-    #df_f.to_csv(DATA_PATH_TRANS_VM)
-
+    
 
     #Con FE realizado
     #df_f = cargar_datos(DATA_PATH_TRANS_VM)

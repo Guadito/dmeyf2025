@@ -1,4 +1,5 @@
 0 - BASELINE: 2 lags, undersampling 0.2, rank pos  competencias_2_gcp_baseline  259,860,000 en test
 1 - Sumo medias móviles x3, 2 lags, undersampling 0.2, rank pos competencias_2_gcp_1_completo 282,100,000 en test
 2 - Medias móviles x3, 2 lags, undersampling 0.5, rank pos competencias_2_gcp_2 288,380,000 en test
-3 - Medias móviles x3, 2 lags, undersampling 0.5, rank pos competencias_2_gcp_3 286,180,000 en test
+3 - Medias móviles x3, 2 lags, undersampling 0.5, rank pos max_depth: [-1]   competencias_2_gcp_3 286,180,000 en test
+4 - Medias móviles x3, 2 lags, undersampling 0.5, rank pos, vuelvo a max_depth: [3, 15], todos los meses. competencias_2_gcp_4

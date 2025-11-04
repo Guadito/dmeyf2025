@@ -185,3 +185,31 @@ def convertir_clase_ternaria_a_target(df: pd.DataFrame, baja_2_1=True) -> pd.Dat
     conn.close()
     
     return df_result
+
+
+
+# ---------------- > 
+
+def convertir_clase_ternaria_a_target_polars(df: pd.DataFrame, baja_2_1: bool = True) -> pd.DataFrame:
+    """Conversión binaria optimizada de clase_ternaria (rápida y sin warnings)."""
+
+    clases = df["clase_ternaria"].to_numpy()
+    n_continua = (clases == "CONTINUA").sum()
+    n_baja1 = (clases == "BAJA+1").sum()
+    n_baja2 = (clases == "BAJA+2").sum()
+
+    if baja_2_1:
+        df.loc[:, "clase_ternaria"] = (clases != "CONTINUA").astype("int8")
+    else:
+        df.loc[:, "clase_ternaria"] = (clases == "BAJA+2").astype("int8")
+
+
+    n_unos = int(df["clase_ternaria"].sum())
+    n_ceros = len(df) - n_unos
+
+    logger.info("Conversión completada:")
+    logger.info(f"  Original - CONTINUA: {n_continua}, BAJA+1: {n_baja1}, BAJA+2: {n_baja2}")
+    logger.info(f"  Binario  - 0: {n_ceros}, 1: {n_unos}")
+    logger.info(f"  Distribución: {n_unos / len(df) * 100:.2f}% casos positivos")
+
+    return df
