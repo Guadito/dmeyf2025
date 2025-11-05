@@ -183,7 +183,7 @@ def crear_o_cargar_estudio(study_name: str = None, semilla: int = None) -> optun
         study_name=study_name,
         direction="maximize",
         sampler = optuna.samplers.TPESampler(seed= SEMILLAS[0]), 
-        storage="sqlite:///optuna_studies.db",
+        storage=storage,
         load_if_exists=True
     )
   
@@ -245,7 +245,6 @@ def optimizar(df: pd.DataFrame, n_trials: int, study_name: str = None, undersamp
   
     return study
     
-
 # ---------------------------> wilcoxon
 
 def evaluar_wilcoxon(df: pd.DataFrame, top_params: list, n_seeds: int = 10) -> dict:
@@ -380,8 +379,6 @@ def evaluar_wilcoxon(df: pd.DataFrame, top_params: list, n_seeds: int = 10) -> d
 
 
 
-
-
 #-----------------------------------------------> evalua el modelo en test
 
 def evaluar_en_test (df: pd.DataFrame, mejores_params:dict) -> tuple:
@@ -483,5 +480,6 @@ def evaluar_en_test (df: pd.DataFrame, mejores_params:dict) -> tuple:
 
 
     return resultados_test, y_pred_binary, y_test, y_pred_prob
+
 
 

@@ -433,3 +433,46 @@ def feature_engineering_rolling_mean(df, columnas_validas, ventana=3):
     
     gc.collect()
     return df_result
+
+
+
+# -------------------------------> reemplazo de ceros
+
+def zero_replace(df, group_cols='foto_mes'):
+    """
+    Reemplaza por NaN los ceros de las columnas que sean todas cero en un grupo (por mes).
+    Versión eficiente para grandes datasets.
+    """
+    cols = df.columns.drop(group_cols)
+    
+    # Calculamos por grupo si cada columna es todo cero
+    todo_cero_por_mes = df.groupby(col_grupo)[cols].agg(lambda x: (x==0).all())
+    
+    for mes, row in todo_cero_por_mes.iterrows():
+        cols_a_reemplazar = row[row].index.tolist()  # columnas True
+        n_cols = len(cols_a_reemplazar)
+        if n_cols > 0:
+            logger.info(f'Mes {mes}: {n_cols} columna(s) con todos ceros -> reemplazando por NaN')
+            # Reemplazamos directamente en el DataFrame original
+            mask = df[col_grupo] == mes
+            df.loc[mask, cols_a_reemplazar] = np.nan
+        else:
+            logger.info(f'Mes {mes}: ninguna columna con todos ceros')
+    
+    return df
+
+
+
+# -------------------------------> Eliminar meses
+
+
+
+def filtrar_meses(df, col_grupo='foto_mes', mes_inicio=202003, mes_fin=202007):
+    """
+    Devuelve un DataFrame con solo los meses dentro del rango [mes_inicio, mes_fin].
+    """
+    # Mask booleana: True si el mes está dentro del rango
+    mask = (df[col_grupo] >= mes_inicio) & (df[col_grupo] <= mes_fin)
+    
+    # Filtramos y devolvemos
+    return df.loc[mask].copy()
