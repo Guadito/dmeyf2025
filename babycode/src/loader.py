@@ -7,7 +7,7 @@ print(sys.executable)
 
 import os
 import duckdb
-import pandas as pd 
+import numpy as np 
 
 logger = logging.getLogger(__name__)
 
