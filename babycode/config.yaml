@@ -2,8 +2,8 @@ STUDY_NAME: "competencias_2_gcp_6"
 BUCKET_NAME: '/home/guadalesandro/buckets/b1'
 
 competencia01:
-            DATA_PATH_: "C:\\Users\\Guada\\Desktop\\babycode\\datasets\\competencia_01_crudo.csv"
-            DATA_PATH_2: '/content/datasets/competencia_01_crudo.csv'
+            DATA_PATH_BASE_NT: "C:\\Users\\Guada\\Desktop\\babycode\\datasets\\competencia_01_crudo.csv"
+            DATA_PATH_BASE_VM: '/home/guadalesandro/buckets/b1/datasets/competencia_01_crudo.csv'
             SEMILLAS: [111119, 111121, 599999, 666667, 888887]
             MES_TRAIN: [202101, 202102]
             MES_VAL: 202103

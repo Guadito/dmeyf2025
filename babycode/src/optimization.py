@@ -482,4 +482,154 @@ def evaluar_en_test (df: pd.DataFrame, mejores_params:dict) -> tuple:
     return resultados_test, y_pred_binary, y_test, y_pred_prob
 
 
+# ----------------------------------- > CV
+
+
+def objetivo_ganancia_cv(trial, df) -> float: 
+    """
+    Parameters:
+    trial: trial de optuna
+    df: dataframe con datos
+
+  
+    Description:
+    Función objetivo que maximiza ganancia con k-fold.
+    Utiliza configuración YAML para períodos y semilla.
+    Define parametros para el modelo LightGBM
+    Preparar dataset para entrenamiento con kfold y un porcentaje de la clase CONTINÚA
+    Entrena modelo con función de ganancia personalizada
+    Predecir y calcular ganancia
+    Guardar cada iteración en JSON
+  
+    Returns:
+    float: ganancia total
+    """
+    # Hiperparámetros a optimizar
+    
+    
+    params = {
+        'verbosity': -1,
+        'random_state': SEMILLAS[0],
+        'objective': 'binary',
+        'metric': 'None',  
+        'max_bin': PARAMETROS_LGBM['max_bin'], 
+        'learning_rate': trial.suggest_float('learning_rate', PARAMETROS_LGBM['learning_rate'][0], PARAMETROS_LGBM['learning_rate'][1]),
+        'num_leaves': trial.suggest_int('num_leaves', PARAMETROS_LGBM['num_leaves'][0], PARAMETROS_LGBM['num_leaves'][1]),
+        'max_depth': trial.suggest_int('max_depth', PARAMETROS_LGBM['max_depth'][0], PARAMETROS_LGBM['max_depth'][1]),
+        'min_child_samples': trial.suggest_int('min_child_samples', PARAMETROS_LGBM['min_child_samples'][0], PARAMETROS_LGBM['min_child_samples'][1]),
+        'subsample': trial.suggest_float('subsample', PARAMETROS_LGBM['subsample'][0], PARAMETROS_LGBM['subsample'][1]),
+        'colsample_bytree': trial.suggest_float('colsample_bytree', PARAMETROS_LGBM['colsample_bytree'][0], PARAMETROS_LGBM['colsample_bytree'][1]),
+        'min_split_gain': trial.suggest_float('min_split_gain', PARAMETROS_LGBM['min_split_gain'][0], PARAMETROS_LGBM['min_split_gain'][1]),
+        'zero_as_missing': trial.suggest_categorical('zero_as_missing', [True, False]) 
+        }
+    
+    num_boost_round = trial.suggest_int('num_boost_round', PARAMETROS_LGBM['num_boost_round'][0], PARAMETROS_LGBM['num_boost_round'][1])
+    undersampling_ratio = PARAMETROS_LGBM['undersampling']
+
+
+    # Preparar datos de entrenamiento (TRAIN  VALIDACION)
+    if isinstance(GENERAL_TRAIN, list):
+        train_data = df[df['foto_mes'].isin(GENERAL_TRAIN)]
+    else: train_data = df[df['foto_mes'] == GENERAL_TRAIN]
+
+    train_data = convertir_clase_ternaria_a_target(train_data, baja_2_1=True) # Entreno el modelo con Baja+1 y Baja+2 == 1
+
+    logger.info(
+    f"Dataset GENERAL TRAIN - Antes del subsampleo de la clase CONTINUA: "
+    f"Clase 1: {len(train_data[train_data['clase_ternaria'] == 1])}, "
+    f"Clase 0: {len(train_data[train_data['clase_ternaria'] == 0])}"
+    )
+
+    # SUBMUESTREO
+    clase_1 = train_data[train_data['clase_ternaria'] == 1]
+    clase_0 = train_data[train_data['clase_ternaria'] == 0]    
+    
+    semilla = SEMILLAS[0] if isinstance(SEMILLAS, list) else SEMILLAS
+    clase_0_sample = clase_0.sample(frac=undersampling_ratio, random_state=semilla)
+    train_data = pd.concat([clase_1, clase_0_sample], axis=0).sample(frac=1, random_state=semilla)
+    
+
+    X_train = train_data.drop(columns = ['clase_ternaria'])
+    y_train = train_data['clase_ternaria']
+    
+
+    lgb_train = lgb.Dataset(X_train, label=y_train)
+    
+
+    cv_results = lgb.cv(params,
+                    num_boost_round=num_boost_round,
+                    nfold=5,
+                    stratified=True,
+                    train_set=lgb_train,
+                    shuffle = True,  
+                    seed = SEMILLAS[0],
+                    feval=ganancia_ordenada,   #METRIC SE LA DECLARA VACÍA Y EN SU LUGAR SE USA FEVAL
+                    callbacks=[lgb.early_stopping(50), lgb.log_evaluation(10)])
+    
+    # Predecir probabilidades y binarizar
+    ganancias_cv = cv_results['valid ganancia-mean']
+    ganancia_maxima = np.max(ganancias_cv)
+    best_iter = np.argmax(ganancias_cv)
+
+    #Guardar el nro original de árboles y el optimizado:
+    num_boost_round_original = trial.params['num_boost_round']
+    trial.set_user_attr('num_boost_round_original', num_boost_round_original)
+    trial.set_user_attr('best_iteration', int(best_iter)) 
+    trial.params['num_boost_round'] = int(best_iter)
+
+    
+    logger.debug(f"Trial {trial.number}: Ganancia = {ganancia_maxima:,.0f}")
+    logger.debug(f"Trial {trial.number}: Mejor iteracion = {best_iter:,.0f}")
+    
+    guardar_iteracion_cv(trial, ganancia_maxima, ganancias_cv, archivo_base=None)
+    
+    return ganancia_maxima
+
+
+#---------------------------------------------------------------> Parametrización OPTUNA  aplicación de OB
+
+def optimizar_cv(df, n_trials=int, study_name: str = None ) -> optuna.Study:
+    """
+    Args:
+        df: DataFrame con datos
+        n_trials: Número de trials a ejecutar
+        study_name: Nombre del estudio (si es None, usa el de config.yaml)
+  
+    Description:
+       Ejecuta optimización bayesiana de hiperparámetros usando configuración YAML.
+       Guarda cada iteración en un archivo JSON separado. 
+       Pasos:
+        1. Crear estudio de Optuna
+        2. Ejecutar optimización
+        3. Retornar estudio
+
+    Returns:
+        optuna.Study: Estudio de Optuna con resultados
+    """
+
+    study_name = STUDY_NAME
+
+
+    logger.info(f"Iniciando optimización con CV {n_trials} trials")
+    logger.info(f"Configuración: TRAIN para CV={GENERAL_TRAIN}, SEMILLA={SEMILLAS[0]}")
+  
+        # Crear estudio de Optuna
+    study = optuna.create_study(
+        study_name=study_name,
+        direction="maximize",
+        sampler = optuna.samplers.TPESampler(seed= SEMILLAS[0]), 
+        storage="sqlite:///optuna_studies.db",
+        load_if_exists=True
+    )
+
+    # Aquí iría tu función objetivo y la optimización
+    study.optimize(lambda trial: objetivo_ganancia_cv(trial, df), n_trials=n_trials)
+
+    # Resultados
+    logger.info(f"Mejor ganancia: {study.best_value:,.0f}")
+    logger.info(f"Optimizacion CV completada. Mejor ganancia promedio: {study.best_value:,.0f}")
+    logger.info(f"Mejores parámetros: {study.best_params}")
+    logger.info(f"Total trials: {len(study.trials)}")
+
+    return study
 
