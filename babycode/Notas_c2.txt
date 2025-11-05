@@ -3,4 +3,4 @@
 2 - Medias móviles x3, 2 lags, undersampling 0.5, rank pos competencias_2_gcp_2 288,380,000 en test
 3 - Medias móviles x3, 2 lags, undersampling 0.5, rank pos max_depth: [-1]   competencias_2_gcp_3 286,180,000 en test
 4 - Medias móviles x3, 2 lags, undersampling 0.5, rank pos, vuelvo a max_depth: [3, 15], todos los meses. competencias_2_gcp_4 - mejoró mucho las ganancias en bayesiana, no pude completar el wilcoxon.
-5 - Medias móviles x3, 2 lags, undersampling 0.5, rank pos, vuelvo a max_depth: [3, 15], meses bayesiana 2021 a 2024 - neutralizo col = ['mprestamos_personales', 'cprestamos_personales']
+5 - Medias móviles x3, 2 lags, undersampling 0.5, rank pos, vuelvo a max_depth: [3, 15], meses bayesiana 2021 a 2024 - neutralizo col = ['mprestamos_personales', 'cprestamos_personales'] 295,560,000

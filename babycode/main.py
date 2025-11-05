@@ -78,7 +78,7 @@ def main():
 
     #df_f = realizar_feature_engineering(df_f, lags = 3)
     #df_f = filtrar_meses(df_f, mes_inicio=202003, mes_fin=202007)
-    #df_f = zero_replace(df_f)
+    df_f = zero_replace(df_f)
     col = ['mprestamos_personales', 'cprestamos_personales']
     df_f = neutral_columns (df_f, col)
     col_montos = select_col_montos(df_f)
@@ -149,7 +149,7 @@ def main():
     # Generar predicciones finales
     logger.info("Generar predicciones finales")
 
-    generar_predicciones_finales_por_umbral(modelo_final, X_predict, clientes_predict, umbrales=[0.020, 0.025, 0.029, 0.032])
+
     generar_predicciones_por_cantidad(modelo_final, X_predict, clientes_predict, cantidades = [9000, 9500, 10000, 10500, 12000, 12500, 13000, 16000, 18000])
 
     # 4 Guardar el DataFrame resultante

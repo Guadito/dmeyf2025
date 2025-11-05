@@ -191,25 +191,32 @@ def convertir_clase_ternaria_a_target(df: pd.DataFrame, baja_2_1=True) -> pd.Dat
 # ---------------- > 
 
 def convertir_clase_ternaria_a_target_polars(df: pd.DataFrame, baja_2_1: bool = True) -> pd.DataFrame:
-    """Conversión binaria optimizada de clase_ternaria (rápida y sin warnings)."""
-
-    clases = df["clase_ternaria"].to_numpy()
-    n_continua = (clases == "CONTINUA").sum()
-    n_baja1 = (clases == "BAJA+1").sum()
-    n_baja2 = (clases == "BAJA+2").sum()
-
+    """Conversión binaria optimizada de clase_ternaria (segura y eficiente)."""
+    
+    if df._is_copy is not None:
+        df = df.copy(deep=True)
+    
+    clases = df["clase_ternaria"].to_numpy(copy=False)
+    
+    # Conteos originales
+    n_continua = np.sum(clases == "CONTINUA")
+    n_baja1 = np.sum(clases == "BAJA+1")
+    n_baja2 = np.sum(clases == "BAJA+2")
+    
+    # Conversión directa
     if baja_2_1:
-        df.loc[:, "clase_ternaria"] = (clases != "CONTINUA").astype("int8")
+        df["clase_ternaria"] = (clases != "CONTINUA").astype("int8", copy=False)
     else:
-        df.loc[:, "clase_ternaria"] = (clases == "BAJA+2").astype("int8")
-
-
+        df["clase_ternaria"] = (clases == "BAJA+2").astype("int8", copy=False)
+    
+    # Conteos finales
     n_unos = int(df["clase_ternaria"].sum())
     n_ceros = len(df) - n_unos
-
+    
     logger.info("Conversión completada:")
     logger.info(f"  Original - CONTINUA: {n_continua}, BAJA+1: {n_baja1}, BAJA+2: {n_baja2}")
     logger.info(f"  Binario  - 0: {n_ceros}, 1: {n_unos}")
     logger.info(f"  Distribución: {n_unos / len(df) * 100:.2f}% casos positivos")
-
+    
     return df
+

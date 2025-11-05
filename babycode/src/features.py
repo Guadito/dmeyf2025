@@ -446,7 +446,7 @@ def zero_replace(df, group_cols='foto_mes'):
     cols = df.columns.drop(group_cols)
     
     # Calculamos por grupo si cada columna es todo cero
-    todo_cero_por_mes = df.groupby(col_grupo)[cols].agg(lambda x: (x==0).all())
+    todo_cero_por_mes = df.groupby(group_cols)[cols].agg(lambda x: (x==0).all())
     
     for mes, row in todo_cero_por_mes.iterrows():
         cols_a_reemplazar = row[row].index.tolist()  # columnas True
