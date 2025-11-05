@@ -476,3 +476,21 @@ def filtrar_meses(df, col_grupo='foto_mes', mes_inicio=202003, mes_fin=202007):
     
     # Filtramos y devolvemos
     return df.loc[mask].copy()
+
+
+# -------------------> Neutralizacion de columnas
+
+def neutral_columns(df, columnas):
+    """
+    Rellena las columnas indicadas con NaN.
+    
+    Parámetros:
+    - df: DataFrame original
+    - columnas: lista de nombres de columnas a rellenar
+    
+    Devuelve:
+    - DataFrame modificado (las columnas especificadas ahora contienen solo NaN)
+    """
+    cols_existentes = df.columns.intersection(columnas)
+    df[cols_existentes] = np.nan
+    return df

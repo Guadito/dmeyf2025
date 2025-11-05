@@ -1,7 +1,5 @@
-STUDY_NAME: "competencias_2_gcp_4" 
+STUDY_NAME: "competencias_2_gcp_5" 
 BUCKET_NAME: '/home/guadalesandro/buckets/b1'
-
-
 
 competencia01:
             DATA_PATH_: "C:\\Users\\Guada\\Desktop\\babycode\\datasets\\competencia_01_crudo.csv"

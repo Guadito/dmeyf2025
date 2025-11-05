@@ -66,7 +66,7 @@ def main():
     # Y realizar FE  
     df_f = cargar_datos(DATA_PATH_BASE_VM)
     df_f = crear_clase_ternaria(df_f)
-    #df_f = realizar_feature_engineering(df_f, lags = 3)
+    
 
     #  #SAMPLE
     #n_sample = 50000
@@ -75,9 +75,12 @@ def main():
     #    train_size=n_sample,
     #    stratify=df_f['clase_ternaria'],
     #    random_state=42)
-    
+
+    #df_f = realizar_feature_engineering(df_f, lags = 3)
     #df_f = filtrar_meses(df_f, mes_inicio=202003, mes_fin=202007)
-    df_f = zero_replace(df_f)
+    #df_f = zero_replace(df_f)
+    col = ['mprestamos_personales', 'cprestamos_personales']
+    df_f = neutral_columns (df_f, col)
     col_montos = select_col_montos(df_f)
     df_f = feature_engineering_rank_pos_batch(df_f, col_montos)
     col = [c for c in df_f.columns if c not in ['numero_de_cliente', 'foto_mes', 'clase_ternaria']]
