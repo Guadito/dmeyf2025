@@ -5,6 +5,7 @@ import logging
 import re
 import sys
 print(sys.executable)
+import numpy as np
 
 import os
 import duckdb
@@ -454,7 +455,7 @@ def zero_replace(df, group_cols='foto_mes'):
         if n_cols > 0:
             logger.info(f'Mes {mes}: {n_cols} columna(s) con todos ceros -> reemplazando por NaN')
             # Reemplazamos directamente en el DataFrame original
-            mask = df[col_grupo] == mes
+            mask = df[group_cols] == mes
             df.loc[mask, cols_a_reemplazar] = np.nan
         else:
             logger.info(f'Mes {mes}: ninguna columna con todos ceros')
@@ -465,14 +466,12 @@ def zero_replace(df, group_cols='foto_mes'):
 
 # -------------------------------> Eliminar meses
 
-
-
-def filtrar_meses(df, col_grupo='foto_mes', mes_inicio=202003, mes_fin=202007):
+def filtrar_meses(df, col='foto_mes', mes_inicio=202003, mes_fin=202007):
     """
     Devuelve un DataFrame con solo los meses dentro del rango [mes_inicio, mes_fin].
     """
     # Mask booleana: True si el mes está dentro del rango
-    mask = (df[col_grupo] >= mes_inicio) & (df[col_grupo] <= mes_fin)
+    mask = (df[col] >= mes_inicio) & (df[col] <= mes_fin)
     
     # Filtramos y devolvemos
     return df.loc[mask].copy()
