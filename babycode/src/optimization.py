@@ -42,6 +42,37 @@ def objetivo_ganancia(trial, df) -> float:
     Returns:
     float: ganancia total
     """
+
+    learning_rate = trial.suggest_float('learning_rate', PARAMETROS_LGBM['learning_rate'][0],PARAMETROS_LGBM['learning_rate'][1],log=True) 
+    
+    num_leaves_exp = trial.suggest_float('num_leaves_exp', np.log2(PARAMETROS_LGBM['num_leaves'][0]), np.log2(PARAMETROS_LGBM['num_leaves'][1]))
+    num_leaves = int(round(2 ** num_leaves_exp))
+    max_depth = trial.suggest_int('max_depth', PARAMETROS_LGBM['max_depth'][0],PARAMETROS_LGBM['max_depth'][1])
+    
+    # RESTRICCIÓN IMPORTANTE: num_leaves debe ser <= 2^max_depth
+    # Si no se cumple, pruning
+    if num_leaves > 2 ** max_depth:
+        raise optuna.exceptions.TrialPruned()
+    
+    min_child_samples_exp = trial.suggest_float('min_child_samples_exp',np.log2(PARAMETROS_LGBM['min_child_samples'][0]), np.log2(PARAMETROS_LGBM['min_child_samples'][1]))
+    min_child_samples = int(round(2 ** min_child_samples_exp))
+    
+
+    n_train = len(df[df['foto_mes'].isin(MES_TRAIN) if isinstance(MES_TRAIN, list) else df['foto_mes'] == MES_TRAIN])
+    if min_child_samples * num_leaves > n_train:
+        raise optuna.exceptions.TrialPruned()
+
+    subsample = trial.suggest_float('subsample', PARAMETROS_LGBM['subsample'][0], PARAMETROS_LGBM['subsample'][1])    
+    colsample_bytree = trial.suggest_float('colsample_bytree', PARAMETROS_LGBM['colsample_bytree'][0], PARAMETROS_LGBM['colsample_bytree'][1])
+
+    min_split_gain = trial.suggest_float('min_split_gain', PARAMETROS_LGBM['min_split_gain'][0], PARAMETROS_LGBM['min_split_gain'][1])
+
+    num_boost_round_exp = trial.suggest_float('num_boost_round_exp',np.log2(PARAMETROS_LGBM['num_boost_round'][0]),np.log2(PARAMETROS_LGBM['num_boost_round'][1]))
+    num_boost_round = int(round(2 ** num_boost_round_exp))
+
+    undersampling = PARAMETROS_LGBM['undersampling']
+
+    
     # Hiperparámetros a optimizar
     params = {
         'verbosity': -1,
@@ -49,18 +80,15 @@ def objetivo_ganancia(trial, df) -> float:
         'objective': 'binary',
         'random_state': SEMILLAS[0],
         'max_bin': PARAMETROS_LGBM['max_bin'], 
-        'learning_rate': trial.suggest_float('learning_rate', PARAMETROS_LGBM['learning_rate'][0], PARAMETROS_LGBM['learning_rate'][1], log=True),
-        'num_leaves': trial.suggest_int('num_leaves', PARAMETROS_LGBM['num_leaves'][0], PARAMETROS_LGBM['num_leaves'][1]),
-        #'max_depth': PARAMETROS_LGBM['max_depth'],
-        'max_depth': trial.suggest_int('max_depth', PARAMETROS_LGBM['max_depth'][0], PARAMETROS_LGBM['max_depth'][1]),
-        'min_child_samples': trial.suggest_int('min_child_samples', PARAMETROS_LGBM['min_child_samples'][0], PARAMETROS_LGBM['min_child_samples'][1]),
-        'subsample': trial.suggest_float('subsample', PARAMETROS_LGBM['subsample'][0], PARAMETROS_LGBM['subsample'][1]),
-        'colsample_bytree': trial.suggest_float('colsample_bytree', PARAMETROS_LGBM['colsample_bytree'][0], PARAMETROS_LGBM['colsample_bytree'][1]),
-        'min_split_gain': trial.suggest_float('min_split_gain', PARAMETROS_LGBM['min_split_gain'][0], PARAMETROS_LGBM['min_split_gain'][1]),
+        'learning_rate': learning_rate,
+        'num_leaves': num_leaves,
+        'max_depth': max_depth,
+        'min_child_samples': min_child_samples,
+        'subsample': subsample,
+        'colsample_bytree': colsample_bytree,
+        'min_split_gain': min_split_gain,
         }
     
-    num_boost_round = trial.suggest_int('num_boost_round', PARAMETROS_LGBM['num_boost_round'][0], PARAMETROS_LGBM['num_boost_round'][1])
-    undersampling = PARAMETROS_LGBM['undersampling']
 
 
     # Preparar datos de entrenamiento (TRAIN + VALIDACION)
@@ -68,8 +96,8 @@ def objetivo_ganancia(trial, df) -> float:
         df_train = df[df['foto_mes'].isin(MES_TRAIN)]
     else:
         df_train = df[df['foto_mes'] == MES_TRAIN]
-
     df_val = df[df['foto_mes'] == MES_VAL]
+
     
     logger.info(
         f"Tamaño train: {len(df_train)}. "
@@ -116,7 +144,7 @@ def objetivo_ganancia(trial, df) -> float:
     ganancia_ordenada_, ganancia_total, _ = ganancia_ordenada(y_pred_proba, lgb_val)
 
     # Guardar información del trial
-    num_boost_round_original = trial.params['num_boost_round']
+    num_boost_round_original = int(round(2 ** trial.params['num_boost_round_exp']))
     trial.set_user_attr('num_boost_round_original', num_boost_round_original)
     trial.set_user_attr('best_iteration', int(best_iter))
     trial.params['num_boost_round'] = int(best_iter) #actualizar el num_boost_round
