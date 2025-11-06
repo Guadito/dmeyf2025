@@ -24,8 +24,8 @@ params_lgb:
         max_bin: [30,31]
         num_boost_round: [100, 500]
         min_split_gain: [0.0, 0.1]
-        undersampling: 0.2 
-        zero_as_missing: [True, False]
+        undersampling: 0.5 
+        #zero_as_missing: [True, False]
 
 
 competencia02:
@@ -50,15 +50,15 @@ competencia02:
             COSTO_ESTIMULO: 20000
             
 params_lgb_2:  
-        learning_rate: [0.01, 0.3]
+        learning_rate: [0.01, 0.2]
         num_leaves: [20, 150]
-        max_depth: [3, 15]
+        max_depth: [3, 10]
         min_child_samples: [5, 100]
         subsample: [0.5, 1.0]
         colsample_bytree: [0.5, 1.0]
         max_bin: [31]
-        num_boost_round: [100, 500]
+        num_boost_round: [100, 2000]
         min_split_gain: [0.0, 0.1]
         undersampling: 0.5 
-        zero_as_missing: [True, False]
+        #zero_as_missing: [True, False]
         

@@ -49,7 +49,7 @@ def objetivo_ganancia(trial, df) -> float:
         'objective': 'binary',
         'random_state': SEMILLAS[0],
         'max_bin': PARAMETROS_LGBM['max_bin'], 
-        'learning_rate': trial.suggest_float('learning_rate', PARAMETROS_LGBM['learning_rate'][0], PARAMETROS_LGBM['learning_rate'][1]),
+        'learning_rate': trial.suggest_float('learning_rate', PARAMETROS_LGBM['learning_rate'][0], PARAMETROS_LGBM['learning_rate'][1], log=True),
         'num_leaves': trial.suggest_int('num_leaves', PARAMETROS_LGBM['num_leaves'][0], PARAMETROS_LGBM['num_leaves'][1]),
         #'max_depth': PARAMETROS_LGBM['max_depth'],
         'max_depth': trial.suggest_int('max_depth', PARAMETROS_LGBM['max_depth'][0], PARAMETROS_LGBM['max_depth'][1]),
@@ -57,7 +57,6 @@ def objetivo_ganancia(trial, df) -> float:
         'subsample': trial.suggest_float('subsample', PARAMETROS_LGBM['subsample'][0], PARAMETROS_LGBM['subsample'][1]),
         'colsample_bytree': trial.suggest_float('colsample_bytree', PARAMETROS_LGBM['colsample_bytree'][0], PARAMETROS_LGBM['colsample_bytree'][1]),
         'min_split_gain': trial.suggest_float('min_split_gain', PARAMETROS_LGBM['min_split_gain'][0], PARAMETROS_LGBM['min_split_gain'][1]),
-        'zero_as_missing': trial.suggest_categorical('zero_as_missing', [True, False]) 
         }
     
     num_boost_round = trial.suggest_int('num_boost_round', PARAMETROS_LGBM['num_boost_round'][0], PARAMETROS_LGBM['num_boost_round'][1])
@@ -618,7 +617,7 @@ def optimizar_cv(df, n_trials=int, study_name: str = None ) -> optuna.Study:
         study_name=study_name,
         direction="maximize",
         sampler = optuna.samplers.TPESampler(seed= SEMILLAS[0]), 
-        storage="sqlite:///optuna_studies.db",
+        storage=storage,
         load_if_exists=True
     )
 
