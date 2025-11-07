@@ -61,10 +61,7 @@ def main():
     logger.info("Inicio de ejecucion.")
     
     # 1- cargar datos 
-    #os.makedirs(BUCKET_NAME, exist_ok=True)
-    
-    
-    # Y realizar FE  
+
     df_f = cargar_datos(DATA_PATH_BASE_VM)
     df_f = crear_clase_ternaria(df_f)
     
@@ -89,18 +86,17 @@ def main():
     col = [c for c in df_f.columns if c not in ['numero_de_cliente', 'foto_mes', 'clase_ternaria']]
     df_f = feature_engineering_rolling_mean(df_f, col, ventana = 3)
     
-
     #Con FE realizado
     #df_f = cargar_datos(DATA_PATH_TRANS_VM)
 
     # 2 - optimización de hiperparámetros
     logger.info("=== INICIANDO OPTIMIZACIÓN DE HIPERPARAMETROS ===")
-    study = optimizar(df_f, n_trials= 50)  
+    study = optimizar(df_f, n_trials= 50, undersampling = 0.10)  
 
     # 3 - Aplicar wilcoxon para obtener el modelo más significativo
     logger.info("=== APLICACIÓN TEST DE WILCOXON ===")  
     best_params = cargar_mejores_hiperparametros(n_top = 5)
-    resultado = evaluar_wilcoxon(df_f, best_params, n_seeds = 10)
+    #resultado = evaluar_wilcoxon(df_f, best_params, n_seeds = 10)
     
 
     # 4 - Evaluar modelo en test

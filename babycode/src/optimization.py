@@ -132,7 +132,7 @@ def objetivo_ganancia(trial, df) -> float:
                     num_boost_round=num_boost_round,              
                     train_set=lgb_train,
                     valid_sets=[lgb_val],  
-                    feval=ganancia_ordenada,   #METRIC SE LA DECLARA VACÍA Y EN SU LUGAR SE USA FEVAL
+                    feval=ganancia_ordenada,  
                     callbacks=[lgb.early_stopping(50), lgb.log_evaluation(10)])
     
 
@@ -660,3 +660,158 @@ def optimizar_cv(df, n_trials=int, study_name: str = None ) -> optuna.Study:
 
     return study
 
+# ----------------------------> Semillerío
+
+rng = np.random.default_rng(SEMILLAS[0])
+semillas_totales = rng.choice(np.arange(100_000, 1_000_000), 
+                              size=K_SEMILLERIO * R_REPE, 
+                              replace=False)
+
+
+def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1) -> float: 
+    """
+    Parameters:
+    trial: trial de optuna
+    df: dataframe con datos
+
+  
+    Description:
+    Función objetivo que maximiza ganancia 
+    Utiliza configuración YAML para períodos y semilla.
+    Define parametros para el modelo LightGBM
+    Preparar dataset para entrenamiento y validación a partir de yaml
+    Entrena modelo con función de ganancia personalizada
+    Predecir y calcular ganancia
+    Guardar cada iteración en JSON
+  
+    Returns:
+    float: ganancia total
+    """
+
+    learning_rate = trial.suggest_float('learning_rate', PARAMETROS_LGBM['learning_rate'][0],PARAMETROS_LGBM['learning_rate'][1],log=True) 
+    
+    num_leaves_exp = trial.suggest_float('num_leaves_exp', np.log2(PARAMETROS_LGBM['num_leaves'][0]), np.log2(PARAMETROS_LGBM['num_leaves'][1]))
+    num_leaves = int(round(2 ** num_leaves_exp))
+    max_depth = trial.suggest_int('max_depth', PARAMETROS_LGBM['max_depth'][0],PARAMETROS_LGBM['max_depth'][1])
+    
+    # RESTRICCIÓN: num_leaves debe ser <= 2^max_depth  Si no se cumple, pruning
+    if num_leaves > 2 ** max_depth:
+        raise optuna.exceptions.TrialPruned()
+    
+    min_child_samples_exp = trial.suggest_float('min_child_samples_exp',
+                                                np.log2(PARAMETROS_LGBM['min_child_samples'][0]), 
+                                                np.log2(PARAMETROS_LGBM['min_child_samples'][1]))
+    min_child_samples = int(round(2 ** min_child_samples_exp))
+    
+    n_train = len(df[df['foto_mes'].isin(MES_TRAIN) if isinstance(MES_TRAIN, list) else df['foto_mes'] == MES_TRAIN])
+    if min_child_samples * num_leaves > n_train:
+        raise optuna.exceptions.TrialPruned()
+
+    subsample = trial.suggest_float('subsample', PARAMETROS_LGBM['subsample'][0], 
+                                    PARAMETROS_LGBM['subsample'][1])   
+    
+    colsample_bytree = trial.suggest_float('colsample_bytree', 
+                                           PARAMETROS_LGBM['colsample_bytree'][0], 
+                                           PARAMETROS_LGBM['colsample_bytree'][1])
+
+    min_split_gain = trial.suggest_float('min_split_gain', 
+                                         PARAMETROS_LGBM['min_split_gain'][0], 
+                                         PARAMETROS_LGBM['min_split_gain'][1])
+
+    num_boost_round_exp = trial.suggest_float('num_boost_round_exp',
+                                              np.log2(PARAMETROS_LGBM['num_boost_round'][0]),
+                                              np.log2(PARAMETROS_LGBM['num_boost_round'][1]))
+    num_boost_round = int(round(2 ** num_boost_round_exp))
+
+    
+    # Hiperparámetros a optimizar
+    params = {
+        'verbosity': -1,
+        'metric': 'None',
+        'objective': 'binary',
+        'max_bin': PARAMETROS_LGBM['max_bin'], 
+        'learning_rate': learning_rate,
+        'num_leaves': num_leaves,
+        'max_depth': max_depth,
+        'min_child_samples': min_child_samples,
+        'subsample': subsample,
+        'colsample_bytree': colsample_bytree,
+        'min_split_gain': min_split_gain,
+        }
+    
+
+
+    # Preparar datos de entrenamiento (TRAIN + VALIDACION)
+    if isinstance(MES_TRAIN, list):
+        df_train = df[df['foto_mes'].isin(MES_TRAIN)]
+    else:
+        df_train = df[df['foto_mes'] == MES_TRAIN]
+    df_val = df[df['foto_mes'] == MES_VAL]
+
+    
+    logger.info(
+        f"Tamaño train: {len(df_train)}. "
+        f"Rango train: {min(MES_TRAIN) if isinstance(MES_TRAIN, list) else MES_TRAIN} - "
+        f"{max(MES_TRAIN) if isinstance(MES_TRAIN, list) else MES_TRAIN}. "
+        f"Tamaño val: {len(df_val)}. Val: {MES_VAL}"
+    )
+
+
+    #Convierto a binaria la clase ternaria 
+    df_train = convertir_clase_ternaria_a_target_polars(df_train, baja_2_1=True) # Entreno el modelo con Baja+1 y Baja+2 == 1
+    df_val = convertir_clase_ternaria_a_target_polars(df_val, baja_2_1=False) # valido la ganancia solamente con Baja+2 == 1
+
+    #Subsampleo
+    df_train = aplicar_undersampling_clase0(df_train, undersampling)
+
+    df_train['clase_ternaria'] = df_train['clase_ternaria'].astype(np.int8)
+    df_val['clase_ternaria'] = df_val['clase_ternaria'].astype(np.int8)
+
+    X_train = df_train.drop(columns = ['clase_ternaria'])
+    y_train = df_train['clase_ternaria']
+    lgb_train = lgb.Dataset(X_train, label=y_train)
+    
+
+    X_val = df_val.drop(columns = ['clase_ternaria'])
+    y_val = df_val['clase_ternaria']
+    lgb_val = lgb.Dataset(X_val, label=y_val, reference=lgb_train)
+
+
+    repeticiones = PARAMETROS_LGBM.get('REPETICIONES', 1)
+    ksemillas = PARAMETROS_LGBM.get('KSEMILLERIO', 1)
+
+    logger.info(f"Trial {trial.number}: Iniciando {repeticiones} repeticiones de {ksemillerio} semillas cada una.")
+
+    for r in range (repeticiones): 
+
+        desde = r * ksemillerio
+        hasta = (r + 1) * ksemillas
+        semillas_ronda = SEMILLAS[desde:hasta]
+
+    model = lgb.train(params,
+                    num_boost_round=num_boost_round,              
+                    train_set=lgb_train,
+                    valid_sets=[lgb_val],  
+                    feval=ganancia_ordenada,  
+                    callbacks=[lgb.early_stopping(50), lgb.log_evaluation(10)])
+    
+
+    # Obtener el mejor número de iteraciones (después del early stopping)
+    best_iter = model.best_iteration
+
+    #Predecir y calcular ganancia
+    y_pred_proba = model.predict(X_val, num_iteration=best_iter)
+    ganancia_ordenada_, ganancia_total, _ = ganancia_ordenada(y_pred_proba, lgb_val)
+
+    # Guardar información del trial
+    num_boost_round_original = int(round(2 ** trial.params['num_boost_round_exp']))
+    trial.set_user_attr('num_boost_round_original', num_boost_round_original)
+    trial.set_user_attr('best_iteration', int(best_iter))
+    trial.params['num_boost_round'] = int(best_iter) #actualizar el num_boost_round
+
+    logger.info(f"Trial {trial.number}: Ganancia = {ganancia_total:,.0f}")
+    logger.info(f"Trial {trial.number}: Mejor iteración = {best_iter}")
+    
+    guardar_iteracion(trial, ganancia_total, archivo_base=None)
+    
+    return ganancia_total

@@ -104,8 +104,42 @@ def ganancia_ordenada (y_pred, y_true) -> float:
     return 'ganancia', ganancia_maxima, True
 
 
+#--------------------------- > ganancia acumulada meseta
 
+def ganancia_ordenada_meseta(y_pred, y_true):
+    """
+    Función de evaluación personalizada para LightGBM (feval).
+    Ordena probabilidades de mayor a menor y calcula ganancia acumulada
+    con suavizado de meseta (rolling mean) para encontrar el punto de máxima ganancia.
+  
+    Args:
+        y_pred: Predicciones de probabilidad del modelo
+        y_true: Dataset de LightGBM con labels verdaderos
+  
+    Returns:
+        tuple: (nombre_metrica, valor, is_higher_better)
+    """
+    # Obtener las etiquetas verdaderas
+    y_true = y_true.get_label()
+    
+    # Ordenar índices por probabilidad descendente
+    indices_ordenados = np.argsort(y_pred)[::-1]
+    
+    # Calcular ganancia individual y acumulada directamente
+    ganancia_individual = np.where(y_true[indices_ordenados] == 1, 780000, -20000)
+    ganancia_acumulada = np.cumsum(ganancia_individual)
+    
+    # Rolling mean con ventana de 2001
+    window = 2001
+    ganancia_meseta = np.convolve(
+        ganancia_acumulada, 
+        np.ones(window) / window, 
+        mode='same'
+    )
+    
+    return 'ganancia', float(ganancia_meseta.max()), True
 
+    
 # --------------------------> Ganancia para definición de umbral
 
 
