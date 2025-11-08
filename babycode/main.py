@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 from src.features import *
 from src.config import  *
 from src.loader import *
-from src.optimization import *
+from src.optimizationBO import *
 from src.best_params import *
 from src.grafico_test import *
 from src.final_training import *
@@ -53,7 +53,6 @@ logger.info(f"MES_TEST: {MES_TEST}")
 logger.info(f"TRAIN_FINAL: {FINAL_TRAIN}")
 logger.info(f"GANANCIA_ACIERTO: {GANANCIA_ACIERTO}")
 logger.info(f"COSTO_ESTIMULO: {COSTO_ESTIMULO}")
-logger.info(f"Undersampling clientes continua: {undersampling}")
 
 
 
@@ -61,18 +60,17 @@ def main():
     logger.info("Inicio de ejecucion.")
     
     # 1- cargar datos 
-
     df_f = cargar_datos(DATA_PATH_BASE_VM)
     df_f = crear_clase_ternaria(df_f)
     
 
-    #  #SAMPLE
-    #n_sample = 50000
-    #df_f, _ = train_test_split(
-    #    df_f,
-    #    train_size=n_sample,
-    #    stratify=df_f['clase_ternaria'],
-    #    random_state=42)
+      #SAMPLE
+    n_sample = 50000
+    df_f, _ = train_test_split(
+        df_f,
+        train_size=n_sample,
+        stratify=df_f['clase_ternaria'],
+        random_state=42)
 
     #df_f = realizar_feature_engineering(df_f, lags = 3)
     #df_f = filtrar_meses(df_f, mes_inicio=202003, mes_fin=202007)

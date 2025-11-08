@@ -231,8 +231,6 @@ def asignar_pesos(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # ---------------------> unsersampling para clase 0
-
-
 def aplicar_undersampling_clase0(
     df: pd.DataFrame,
     undersampling: float,
@@ -260,7 +258,8 @@ def aplicar_undersampling_clase0(
     pd.DataFrame
         DataFrame subsampleado.
     """
-   
+    duckdb.execute(f"SELECT setseed({seed / 1000000.0})")
+
     # Primero calculamos cuántos IDs "never_1" hay
     n_never_1 = duckdb.sql(f"""
         SELECT COUNT(DISTINCT {id_col}) as n
@@ -320,8 +319,7 @@ def aplicar_undersampling_clase0(
         INNER JOIN ids_to_keep USING ({id_col})
     """).df()
    
-    # Setear la seed antes de ejecutar
-    duckdb.execute(f"SELECT setseed({seed / 1000000.0})")
+    logger.info(f"🧮 Undersampling aplicado: {undersampling:.2%} (semilla={seed})")
     
     return result
 

@@ -108,41 +108,63 @@ def ganancia_ordenada (y_pred, y_true) -> float:
 
 def ganancia_ordenada_meseta(y_pred, y_true):
     """
-    Función de evaluación personalizada para LightGBM (feval).
-    Ordena probabilidades de mayor a menor y calcula ganancia acumulada
-    con suavizado de meseta (rolling mean) para encontrar el punto de máxima ganancia.
-  
+    Función de evaluación personalizada (feval) que replica
+    exactamente la lógica de frollmean(..., align='center') de R.
+
     Args:
         y_pred: Predicciones de probabilidad del modelo
-        y_true: Dataset de LightGBM con labels verdaderos
-  
+        y_true: Dataset de LightGBM (lgb.Dataset)
+    
     Returns:
         tuple: (nombre_metrica, valor, is_higher_better)
     """
-    # Obtener las etiquetas verdaderas
-    y_true = y_true.get_label()
     
-    # Ordenar índices por probabilidad descendente
-    indices_ordenados = np.argsort(y_pred)[::-1]
+    # 1. Obtener etiquetas
+    y_true_labels = y_true.get_label()
     
-    # Calcular ganancia individual y acumulada directamente
-    ganancia_individual = np.where(y_true[indices_ordenados] == 1, 780000, -20000)
-    ganancia_acumulada = np.cumsum(ganancia_individual)
+    # 2. Crear DataFrame de Polars
+    df_eval = pl.DataFrame({
+        'y_true': y_true_labels,
+        'y_pred_proba': y_pred
+    })
     
-    # Rolling mean con ventana de 2001
-    window = 2001
-    ganancia_meseta = np.convolve(
-        ganancia_acumulada, 
-        np.ones(window) / window, 
-        mode='same'
+    # 3. Calcular Ganancia Acumulada (igual que en R)
+    df_ordenado = df_eval.sort('y_pred_proba', descending=True)
+    df_ordenado = df_ordenado.with_columns(
+        pl.when(pl.col('y_true') == 1)
+          .then(pl.lit(780000, dtype=pl.Int64))
+          .otherwise(pl.lit(-20000, dtype=pl.Int64))
+          .alias('ganancia_individual')
+    )
+    df_ordenado = df_ordenado.with_columns(
+        pl.col('ganancia_individual').cum_sum().alias('ganancia_acumulada')
     )
     
-    return 'ganancia', float(ganancia_meseta.max()), True
+    # 4. Calcular Meseta (El frollmean de R)
+    window_size = 2001
+    df_meseta = df_ordenado.with_columns(
+        pl.col('ganancia_acumulada')
+          .rolling_mean(
+              window_size=window_size,
+              center=True,      # Equivalente a align="center"
+              min_periods=1     # Equivalente a na.rm=TRUE
+          )
+          .alias('ganancia_meseta')
+    )
+    
+    # 5. Encontrar el máximo de la meseta
+    ganancia_maxima_meseta = df_meseta.select(
+        pl.col('ganancia_meseta').max()
+    ).item()
+
+    return 'ganancia_meseta', ganancia_maxima_meseta, True
+
+
+
+
 
     
 # --------------------------> Ganancia para definición de umbral
-
-
 def calcular_ganancia_acumulada_optimizada(y_true, y_pred_proba) -> tuple:  
     """
     Calcula la ganancia acumulada ordenando las predicciones de mayor a menor probabilidad.
