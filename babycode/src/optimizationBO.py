@@ -82,7 +82,7 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1) -> float:
                 f"subsample={subsample:.3f}, colsample={colsample_bytree:.3f}, "
                 f"rounds={num_boost_round}")
     
-    # Hiperparámetros a optimizar
+    # Hiperparámetros
     params = {
         'verbosity': -1,
         'metric': 'None',
@@ -97,8 +97,6 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1) -> float:
         'min_split_gain': min_split_gain,
         }
     
-
-
     # Preparar datos de entrenamiento (TRAIN + VALIDACION)
     if isinstance(MES_TRAIN, list):
         df_train = df[df['foto_mes'].isin(MES_TRAIN)]
@@ -119,7 +117,7 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1) -> float:
     df_val = convertir_clase_ternaria_a_target_polars(df_val, baja_2_1=False) # valido la ganancia solamente con Baja+2 == 1
 
     #Subsampleo
-    df_train = aplicar_undersampling_clase0(df_train, undersampling, seed= SEMILLAS[0])   #VER
+    df_train = aplicar_undersampling_clase0(df_train, undersampling, seed= SEMILLAS[0])   #VER SEMILLA.
 
     df_train['clase_ternaria'] = df_train['clase_ternaria'].astype(np.int8)
     df_val['clase_ternaria'] = df_val['clase_ternaria'].astype(np.int8)
@@ -127,7 +125,6 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1) -> float:
     X_train = df_train.drop(columns = ['clase_ternaria'])
     y_train = df_train['clase_ternaria']
     lgb_train = lgb.Dataset(X_train, label=y_train)
-    
 
     X_val = df_val.drop(columns = ['clase_ternaria'])
     y_val = df_val['clase_ternaria']
@@ -176,7 +173,9 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1) -> float:
             y_pred_proba_i = model.predict(X_val, num_iteration=best_iter_i)
             y_pred_acum += y_pred_proba_i
 
-        _, ganancia_ronda, _ = ganancia_ordenada_meseta(y_pred_acum, y_val)
+        
+        y_pred_prom = y_pred_acum / len(semillas_ronda)
+        _, ganancia_ronda, _ = ganancia_ordenada_meseta(y_pred_prom, y_val)
         lista_ganancias_repeticion.append(ganancia_ronda)
 
         logger.info(f"Trial {trial.number}, Repetición {repe+1}: Ganancia meseta = {ganancia_ronda:,.0f}")
@@ -307,7 +306,6 @@ def optimizar(df: pd.DataFrame, n_trials: int, study_name: str = None, undersamp
   
     # Ejecutar optimización
     if trials_a_ejecutar > 0:
-        ##LO UNICO IMPORTANTE DEL METODO Y EL study CLARO
         study.optimize(lambda trial: objetivo_ganancia_semillerio(trial, df, undersampling=undersampling), n_trials=trials_a_ejecutar)
         logger.info(f"🏆 Mejor ganancia: {study.best_value:,.0f}")
         logger.info(f"Mejores parámetros: {study.best_params}")

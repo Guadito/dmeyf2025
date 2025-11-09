@@ -119,8 +119,11 @@ def ganancia_ordenada_meseta(y_pred, y_true):
         tuple: (nombre_metrica, valor, is_higher_better)
     """
     
-    # 1. Obtener etiquetas
-    y_true_labels = y_true.get_label()
+    # 1. Obtener etiquetas.
+    if hasattr(y_true, "get_label"):
+        y_true_labels = y_true.get_label()
+    else:
+        y_true_labels = np.array(y_true)
     
     # 2. Crear DataFrame de Polars
     df_eval = pl.DataFrame({
@@ -159,12 +162,9 @@ def ganancia_ordenada_meseta(y_pred, y_true):
 
     return 'ganancia_meseta', ganancia_maxima_meseta, True
 
-
-
-
-
     
 # --------------------------> Ganancia para definición de umbral
+    
 def calcular_ganancia_acumulada_optimizada(y_true, y_pred_proba) -> tuple:  
     """
     Calcula la ganancia acumulada ordenando las predicciones de mayor a menor probabilidad.
