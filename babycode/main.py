@@ -83,25 +83,16 @@ def main():
     df_f = feature_engineering_lag_delta_polars(df_f, col, cant_lag = 2)
     col = [c for c in df_f.columns if c not in ['numero_de_cliente', 'foto_mes', 'clase_ternaria']]
     df_f = feature_engineering_rolling_mean(df_f, col, ventana = 3)
-    
-    #Con FE realizado
-    #df_f = cargar_datos(DATA_PATH_TRANS_VM)
+
 
     # 2 - optimización de hiperparámetros
     logger.info("=== INICIANDO OPTIMIZACIÓN DE HIPERPARAMETROS ===")
-    study = optimizar(df_f, n_trials= 50, undersampling = 0.10)  
-
-    # 3 - Aplicar wilcoxon para obtener el modelo más significativo
-    logger.info("=== APLICACIÓN TEST DE WILCOXON ===")  
-    best_params = cargar_mejores_hiperparametros(n_top = 5)
-    #resultado = evaluar_wilcoxon(df_f, best_params, n_seeds = 10)
+    study = optimizar(df_f, n_trials= 50, undersampling = 0.10, repeticiones = 3, ksemillerio = 5)  
     
-
-    # 4 - Evaluar modelo en test
-    params_best_model = resultado['mejor_params']
+    # 3 - Evaluar modelo en test
+    best_params = cargar_mejores_hiperparametros(n_top = 1)
     resultados_test, y_pred_binary, y_test, y_pred_prob = evaluar_en_test(df_f, params_best_model)
 
-    
     # Resumen de evaluación en test
     logger.info("=== RESUMEN DE EVALUACIÓN EN TEST ===")
     logger.info(f"Ganancia en test: {resultados_test['ganancia_test']:,.0f}")

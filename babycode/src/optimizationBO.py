@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 # ----------------------------> Semillerío
 
-def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1) -> float: 
+def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1, repeticiones: int = 1, ksemillerio: int = 1 ) -> float: 
     """
     Parameters:
     trial: trial de optuna
@@ -130,9 +130,6 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1) -> float:
     y_val = df_val['clase_ternaria']
     lgb_val = lgb.Dataset(X_val, label=y_val, reference=lgb_train)
 
-    repeticiones = PARAMETROS_LGBM.get('REPETICIONES', 1)
-    ksemillerio= PARAMETROS_LGBM.get('KSEMILLERIO', 1)
-
     logger.info(f"Trial {trial.number} - Configuración semillerio: {repeticiones} repeticiones x {ksemillerio} semillas = {repeticiones * ksemillerio} modelos totales")
 
     rng = np.random.default_rng(SEMILLAS[0])
@@ -152,10 +149,14 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1) -> float:
         
         lista_best_iters_ronda = []
 
-        # Loop del semillerio
-        logger.info(f"Trial {trial.number}, Repetición {repe+1}/{repeticiones}: Usando semillas {list(semillas_ronda)}")
 
-        for semilla in semillas_ronda:
+        logger.info("="*80)
+        logger.info(f"🔁 [Trial {trial.number}] Repetición {repe+1}/{repeticiones}")
+        logger.info(f"🌱 Semillas en esta ronda: {list(semillas_ronda)}")
+        logger.info("="*80)
+
+
+        for i, semilla in enumerate(semillas_ronda, start=1):    
             params['random_state'] = semilla
 
             model = lgb.train(params,
@@ -166,11 +167,12 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1) -> float:
                             callbacks=[lgb.early_stopping(50), lgb.log_evaluation(10)])
         
             # Obtener mejor iteracion 
-            best_iter_i = model.best_iteration
-            lista_best_iters_ronda.append(best_iter_i)
-            lista_best_iters_total.append(best_iter_i)
+            best_iter_semilla= model.best_iteration        #Mejor iteración de la semilla
+            lista_best_iters_ronda.append(best_iter_semilla)  #Guarda las mejores iteraciones de la repetición
+            lista_best_iters_total.append(best_iter_semilla) #Guarda las mejores iteraciones del trial
 
-            y_pred_proba_i = model.predict(X_val, num_iteration=best_iter_i)
+
+            y_pred_proba_i = model.predict(X_val, num_iteration=best_iter_semilla)
             y_pred_acum += y_pred_proba_i
 
         
@@ -178,21 +180,26 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1) -> float:
         _, ganancia_ronda, _ = ganancia_ordenada_meseta(y_pred_prom, y_val)
         lista_ganancias_repeticion.append(ganancia_ronda)
 
-        logger.info(f"Trial {trial.number}, Repetición {repe+1}: Ganancia meseta = {ganancia_ronda:,.0f}")
+            # Log detallado de la repetición
+        logger.info(f"[Trial {trial.number}] Repetición {repe+1} completada:")
+        logger.info(f"Ganancia meseta: {ganancia_ronda:,.0f}")
 
     ganancia_total_promedio = np.mean(lista_ganancias_repeticion)
     ganancia_sd = np.std(lista_ganancias_repeticion)
-    best_iter_promedio = int(np.mean(lista_best_iters_total))
 
-        
+    logger.info("FINAL DEL TRIAL")
+    logger.info(f"Trial {trial.number} - Promedio de ganancias (meseta): {ganancia_total_promedio:,.0f} ± {ganancia_sd:,.0f}")
+    logger.info(f"Iteraciones totales: {lista_best_iters_total}")
+    logger.info("="*80)
+
     # Guardar información del trial
+    best_iter_promedio = int(np.mean(lista_best_iters_total))
+    logger.info(f"Best iter promedio para trial {trial.number}: {best_iter_promedio}")
+
     num_boost_round_original = int(round(2 ** trial.params['num_boost_round_exp']))
     trial.set_user_attr('num_boost_round_original', num_boost_round_original)
     trial.set_user_attr('best_iteration', int(best_iter_promedio))
     trial.params['num_boost_round'] = best_iter_promedio #actualizar el num_boost_round
-        
-    logger.info(f"Trial {trial.number}: Ganancia promedio ={ganancia_total_promedio:,.0f} (SD: {ganancia_sd:,.0f})")
-    logger.info(f"Trial {trial.number}: Mejor iteración promedio = {best_iter_promedio}")
         
     guardar_iteracion(trial, ganancia_total_promedio, archivo_base=None)
     
@@ -266,7 +273,8 @@ def crear_o_cargar_estudio(study_name: str = None, semilla: int = None) -> optun
 
 #---------------------------------------------------------------> Aplicación de OB
 
-def optimizar(df: pd.DataFrame, n_trials: int, study_name: str = None, undersampling: float = 0.01) -> optuna.Study:
+def optimizar(df: pd.DataFrame, n_trials: int, study_name: str = None, 
+              undersampling: float = 0.01, repeticiones: int = 1, ksemillerio: int = 1) -> optuna.Study:
     """
     Args:
         df: DataFrame con datos
@@ -313,6 +321,128 @@ def optimizar(df: pd.DataFrame, n_trials: int, study_name: str = None, undersamp
         logger.info(f"✅ Ya se completaron {n_trials} trials")
   
     return study   
+
+# --------------- > evaluar modelo con semillerio
+
+def evaluar_en_test_semillerio (df: pd.DataFrame, mejores_params:dict) -> tuple:
+    """
+    Evalúa el modelo con los mejores hiperparámetros en el conjunto de test.
+    Solo calcula la ganancia.
+  
+    Args:
+        df: DataFrame con todos los datos
+        mejores_params: Mejores hiperparámetros encontrados por Optuna
+  
+    Returns:
+        dict: Resultados de la evaluación en test (ganancia + estadísticas básicas)
+    """
+    logger.info(f"INICIANDO EVALUACIÓN EN TEST")
+  
+    # Preparar datos de entrenamiento (TRAIN + VALIDACION)
+    if isinstance(MES_TRAIN, list):
+        periodos_entrenamiento = MES_TRAIN + [MES_VAL]
+    else:
+        periodos_entrenamiento = [MES_TRAIN, MES_VAL]
+
+    
+    logger.info(f"Períodos de entrenamiento: {periodos_entrenamiento}")
+    logger.info(f"Período de test: {MES_TEST}")
+
+    
+    df_train_completo = df[df['foto_mes'].isin(periodos_entrenamiento)]
+    df_test = df[df['foto_mes'] == MES_TEST]
+
+
+    df_train_completo = convertir_clase_ternaria_a_target_polars(df_train_completo, baja_2_1=True) # Entreno el modelo con Baja+1 y Baja+2 == 1
+    df_test = convertir_clase_ternaria_a_target_polars(df_test, baja_2_1=False) # valido la ganancia solamente con Baja+2 == 1
+
+    X_train_completo = df_train_completo.drop(columns = ['clase_ternaria'])
+    y_train_completo = df_train_completo['clase_ternaria']
+
+    X_test = df_test.drop(columns = ['clase_ternaria'])
+    y_test = df_test['clase_ternaria']
+
+    
+    train_data = lgb.Dataset(X_train_completo, label=y_train_completo)
+    test_data = lgb.Dataset(X_test, label=y_test, reference=train_data)
+
+    # Copiar los parámetros para no modificar el dict original
+    mejores_params = mejores_params.copy()
+
+    # Tomar la iteración óptima si existe
+    num_boost_round = mejores_params.pop('best_iteration', None)
+    if num_boost_round is None:
+        num_boost_round = mejores_params.pop('num_boost_round', 200)  # fallback
+
+    repeticiones = PARAMETROS_LGBM.get('REPETICIONES', 1)
+    ksemillerio= PARAMETROS_LGBM.get('KSEMILLERIO', 1)
+
+    logger.info(f"Trial {trial.number} - Configuración semillerio: {repeticiones} repeticiones x {ksemillerio} semillas = {repeticiones * ksemillerio} modelos totales")
+
+    rng = np.random.default_rng(SEMILLAS[0])
+    semillas_totales = rng.choice(np.arange(100_000, 1_000_000), 
+                              size=ksemillerio * repeticiones, 
+                              replace=False)
+
+    for i, semilla in enumerate(semillas_ronda, start=1):    
+            params['random_state'] = semilla
+        
+        # Entrenar modelo con mejores parámetros
+        model = lgb.train(mejores_params, 
+                          train_data,
+                          num_boost_round=num_boost_round,
+                          feval=ganancia_ordenada
+                        )   
+    
+    
+        # Predecir probabilidades y binarizar
+        y_pred_prob = model.predict(X_test)
+        y_pred_binary = (y_pred_prob > 0.025).astype(int) 
+      
+    # Calcular solo la ganancia
+    ganancia_test = calcular_ganancia(y_test, y_pred_binary)
+  
+    # Estadísticas básicas
+    total_predicciones = len(y_pred_binary)
+    predicciones_positivas = np.sum(y_pred_binary == 1)
+    porcentaje_positivas = (predicciones_positivas / total_predicciones) * 100
+    verdaderos_positivos = np.sum((y_pred_binary == 1) & (y_test == 1))
+    falsos_positivos = np.sum((y_pred_binary == 1) & (y_test == 0))
+    verdaderos_negativos = np.sum((y_pred_binary == 0) & (y_test == 0))
+    falsos_negativos = np.sum((y_pred_binary == 0) & (y_test == 1))
+
+    precision = verdaderos_positivos / (verdaderos_positivos + falsos_positivos + 1e-10)  # para evitar división por cero
+    recall = verdaderos_positivos / (verdaderos_positivos + falsos_negativos + 1e-10)
+    accuracy = (verdaderos_positivos + verdaderos_negativos) / total_predicciones
+
+    resultados_test = {
+        'ganancia_test': float(ganancia_test),
+        'total_predicciones': int(total_predicciones),
+        'predicciones_positivas': int(predicciones_positivas),
+        'porcentaje_positivas': float(porcentaje_positivas),
+        'verdaderos_positivos': int(verdaderos_positivos),
+        'falsos_positivos': int(falsos_positivos),
+        'verdaderos_negativos': int(verdaderos_negativos),
+        'falsos_negativos': int(falsos_negativos),
+        'precision': float(precision),
+        'recall': float(recall),
+        'accuracy': float(accuracy),
+        'timestamp': datetime.datetime.now().isoformat()
+    }
+  
+    guardar_resultados_test(resultados_test)
+    graficar_importances_test(model)
+
+
+    return resultados_test, y_pred_binary, y_test, y_pred_prob
+
+
+
+
+
+
+
+
 
 #-----------------------------------------------> evalua el modelo en test
 
@@ -415,6 +545,49 @@ def evaluar_en_test (df: pd.DataFrame, mejores_params:dict) -> tuple:
 
 
     return resultados_test, y_pred_binary, y_test, y_pred_prob
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #-----------------------------------------------------------  optim bayesiana simple
 
@@ -522,7 +695,7 @@ def objetivo_ganancia(trial, df) -> float:
     y_val = df_val['clase_ternaria']
     lgb_val = lgb.Dataset(X_val, label=y_val, reference=lgb_train)
 
-
+    
     model = lgb.train(params,
                     num_boost_round=num_boost_round,              
                     train_set=lgb_train,
@@ -550,3 +723,5 @@ def objetivo_ganancia(trial, df) -> float:
     guardar_iteracion(trial, ganancia_total, archivo_base=None)
     
     return ganancia_total
+
+
