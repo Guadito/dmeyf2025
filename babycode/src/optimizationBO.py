@@ -314,7 +314,7 @@ def optimizar(df: pd.DataFrame, n_trials: int, study_name: str = None,
   
     # Ejecutar optimización
     if trials_a_ejecutar > 0:
-        study.optimize(lambda trial: objetivo_ganancia_semillerio(trial, df, undersampling=undersampling), n_trials=trials_a_ejecutar)
+        study.optimize(lambda trial: objetivo_ganancia_semillerio(trial, df, undersampling=undersampling, repeticiones=repeticiones, ksemillerio=ksemillerio ), n_trials=trials_a_ejecutar)
         logger.info(f"🏆 Mejor ganancia: {study.best_value:,.0f}")
         logger.info(f"Mejores parámetros: {study.best_params}")
     else:
@@ -324,7 +324,7 @@ def optimizar(df: pd.DataFrame, n_trials: int, study_name: str = None,
 
 # --------------- > evaluar modelo con semillerio
 
-def evaluar_en_test_semillerio (df: pd.DataFrame, mejores_params:dict) -> tuple:
+def evaluar_en_test_semillerio (df: pd.DataFrame, mejores_params:dict, repeticiones: int =1, ksemillerio:int = 1) -> tuple:
     """
     Evalúa el modelo con los mejores hiperparámetros en el conjunto de test.
     Solo calcula la ganancia.
@@ -337,45 +337,36 @@ def evaluar_en_test_semillerio (df: pd.DataFrame, mejores_params:dict) -> tuple:
         dict: Resultados de la evaluación en test (ganancia + estadísticas básicas)
     """
     logger.info(f"INICIANDO EVALUACIÓN EN TEST")
-  
-    # Preparar datos de entrenamiento (TRAIN + VALIDACION)
-    if isinstance(MES_TRAIN, list):
-        periodos_entrenamiento = MES_TRAIN + [MES_VAL]
-    else:
-        periodos_entrenamiento = [MES_TRAIN, MES_VAL]
-
-    
-    logger.info(f"Períodos de entrenamiento: {periodos_entrenamiento}")
+    logger.info(f"Períodos de entrenamiento: {MES_TRAIN}")
     logger.info(f"Período de test: {MES_TEST}")
-
-    
-    df_train_completo = df[df['foto_mes'].isin(periodos_entrenamiento)]
+  
+    # Preparar datos de entrenamiento
+    if isinstance(MES_TRAIN, list):
+        df_train = df[df['foto_mes'].isin(MES_TRAIN)]
+    else:
+        df_train = df[df['foto_mes'] == MES_TRAIN]
     df_test = df[df['foto_mes'] == MES_TEST]
-
-
-    df_train_completo = convertir_clase_ternaria_a_target_polars(df_train_completo, baja_2_1=True) # Entreno el modelo con Baja+1 y Baja+2 == 1
+    
+    df_train = convertir_clase_ternaria_a_target_polars(df_train, baja_2_1=True) # Entreno el modelo con Baja+1 y Baja+2 == 1
     df_test = convertir_clase_ternaria_a_target_polars(df_test, baja_2_1=False) # valido la ganancia solamente con Baja+2 == 1
 
-    X_train_completo = df_train_completo.drop(columns = ['clase_ternaria'])
-    y_train_completo = df_train_completo['clase_ternaria']
+    df_train = aplicar_undersampling_clase0(df_train, UNDERSAMPLING_FINAL, ...)
+    
+    X_train = df_train.drop(columns = ['clase_ternaria'])
+    y_train = df_train['clase_ternaria']
+    train_data = lgb.Dataset(X_train, label=y_train)
 
     X_test = df_test.drop(columns = ['clase_ternaria'])
     y_test = df_test['clase_ternaria']
-
-    
-    train_data = lgb.Dataset(X_train_completo, label=y_train_completo)
     test_data = lgb.Dataset(X_test, label=y_test, reference=train_data)
 
-    # Copiar los parámetros para no modificar el dict original
-    mejores_params = mejores_params.copy()
 
-    # Tomar la iteración óptima si existe
+    #Seleccionar hiperparámetros
+    mejores_params = mejores_params.copy()
     num_boost_round = mejores_params.pop('best_iteration', None)
     if num_boost_round is None:
         num_boost_round = mejores_params.pop('num_boost_round', 200)  # fallback
 
-    repeticiones = PARAMETROS_LGBM.get('REPETICIONES', 1)
-    ksemillerio= PARAMETROS_LGBM.get('KSEMILLERIO', 1)
 
     logger.info(f"Trial {trial.number} - Configuración semillerio: {repeticiones} repeticiones x {ksemillerio} semillas = {repeticiones * ksemillerio} modelos totales")
 
@@ -384,54 +375,103 @@ def evaluar_en_test_semillerio (df: pd.DataFrame, mejores_params:dict) -> tuple:
                               size=ksemillerio * repeticiones, 
                               replace=False)
 
-    for i, semilla in enumerate(semillas_ronda, start=1):    
-            params['random_state'] = semilla
+    for repe in range (repeticiones): 
+            desde = repe * ksemillerio
+            hasta = (repe + 1) * ksemillerio
+            semillas_ronda = semillas_totales[desde:hasta]
+
+            y_pred_acum_ronda = np.zeros(len(X_test))
+                
+        for semilla in semillas_ronda:    
+            mejores_params['random_state'] = semilla
+    
+            arch_modelo = os.path.join(DIR_MODELITOS, f"mod_{semilla}.txt")
+            os.makedirs(DIR_MODELITOS, exist_ok=True)
+            
+            # Entrenar modelo con mejores parámetros
+            model = lgb.train(mejores_params, 
+                              train_data,
+                              num_boost_round=num_boost_round,
+                              #feval=ganancia_ordenada
+                            )   
+            model.save_model(arch_modelo)
+            
+            y_pred_prob = model.predict(X_test, num_iteration=num_boost_round)
+            y_pred_acum_ronda += y_pred_prob
+    
+            del model
+            gc.collect()
+            
+        y_pred_promedio_ronda = y_pred_acum_ronda / ksemillerio
+
+        # 5. Calcular ganancias en los cortes (Celda 52 de R)
+        ganancias_ronda = calcular_ganancias_por_corte(
+            y_pred_promedio_ronda, 
+            y_test, 
+            cortes)
+
+        # 6. Guardar en la matriz
+        mganancias[repe, :] = ganancias_ronda
         
-        # Entrenar modelo con mejores parámetros
-        model = lgb.train(mejores_params, 
-                          train_data,
-                          num_boost_round=num_boost_round,
-                          feval=ganancia_ordenada
-                        )   
-    
-    
-        # Predecir probabilidades y binarizar
-        y_pred_prob = model.predict(X_test)
-        y_pred_binary = (y_pred_prob > 0.025).astype(int) 
-      
-    # Calcular solo la ganancia
-    ganancia_test = calcular_ganancia(y_test, y_pred_binary)
-  
-    # Estadísticas básicas
-    total_predicciones = len(y_pred_binary)
-    predicciones_positivas = np.sum(y_pred_binary == 1)
-    porcentaje_positivas = (predicciones_positivas / total_predicciones) * 100
-    verdaderos_positivos = np.sum((y_pred_binary == 1) & (y_test == 1))
-    falsos_positivos = np.sum((y_pred_binary == 1) & (y_test == 0))
-    verdaderos_negativos = np.sum((y_pred_binary == 0) & (y_test == 0))
-    falsos_negativos = np.sum((y_pred_binary == 0) & (y_test == 1))
+        logger.info(f"Repeticion {repe+1}: Ganancias por corte={dict(zip(cortes, ganancias_ronda))}")
 
-    precision = verdaderos_positivos / (verdaderos_positivos + falsos_positivos + 1e-10)  # para evitar división por cero
-    recall = verdaderos_positivos / (verdaderos_positivos + falsos_negativos + 1e-10)
-    accuracy = (verdaderos_positivos + verdaderos_negativos) / total_predicciones
 
-    resultados_test = {
-        'ganancia_test': float(ganancia_test),
-        'total_predicciones': int(total_predicciones),
-        'predicciones_positivas': int(predicciones_positivas),
-        'porcentaje_positivas': float(porcentaje_positivas),
-        'verdaderos_positivos': int(verdaderos_positivos),
-        'falsos_positivos': int(falsos_positivos),
-        'verdaderos_negativos': int(verdaderos_negativos),
-        'falsos_negativos': int(falsos_negativos),
-        'precision': float(precision),
-        'recall': float(recall),
-        'accuracy': float(accuracy),
-        'timestamp': datetime.datetime.now().isoformat()
-    }
-  
+        # 7. Calcular resultados finales
+    ganancias_promedio_por_corte = np.mean(mganancias, axis=0)
+    mejor_corte_index = np.argmax(ganancias_promedio_por_corte)
+    mejor_ganancia_promedio = ganancias_promedio_por_corte[mejor_corte_index]
+    mejor_corte_cantidad = cortes[mejor_corte_index]
+        
+    logger.info(f"--- RESULTADO FINAL ---")
+    logger.info(f"Ganancias promedio por corte: {dict(zip(cortes, ganancias_promedio_por_corte))}")
+    logger.info(f"Mejor corte (promedio): {mejor_corte_cantidad} envíos")
+    logger.info(f"Ganancia en mejor corte (promedio): {mejor_ganancia_promedio:,.0f}")
+    
+    # 8. Guardar resultados
+        resultados_test = {
+            'ganancia_test_promedio': float(mejor_ganancia_promedio),
+            'mejor_corte_promedio': int(mejor_corte_cantidad),
+            'matriz_ganancias': mganancias.tolist(),
+            'ganancias_promedio_por_corte': dict(zip(cortes, ganancias_promedio_por_corte)),
+            'timestamp': datetime.datetime.now().isoformat()
+        }
+    
     guardar_resultados_test(resultados_test)
-    graficar_importances_test(model)
+    
+    return resultados_test
+
+
+
+
+
+
+        # Estadísticas básicas
+        total_predicciones = len(y_pred_binary)
+        predicciones_positivas = np.sum(y_pred_binary == 1)
+        porcentaje_positivas = (predicciones_positivas / total_predicciones) * 100
+        verdaderos_positivos = np.sum((y_pred_binary == 1) & (y_test == 1))
+        falsos_positivos = np.sum((y_pred_binary == 1) & (y_test == 0))
+        verdaderos_negativos = np.sum((y_pred_binary == 0) & (y_test == 0))
+        falsos_negativos = np.sum((y_pred_binary == 0) & (y_test == 1))
+    
+        precision = verdaderos_positivos / (verdaderos_positivos + falsos_positivos + 1e-10)  # para evitar división por cero
+        recall = verdaderos_positivos / (verdaderos_positivos + falsos_negativos + 1e-10)
+        accuracy = (verdaderos_positivos + verdaderos_negativos) / total_predicciones
+    
+        resultados_test = {
+            'ganancia_test': float(ganancia_test),
+            'total_predicciones': int(total_predicciones),
+            'predicciones_positivas': int(predicciones_positivas),
+            'porcentaje_positivas': float(porcentaje_positivas),
+            'verdaderos_positivos': int(verdaderos_positivos),
+            'falsos_positivos': int(falsos_positivos),
+            'verdaderos_negativos': int(verdaderos_negativos),
+            'falsos_negativos': int(falsos_negativos),
+            'precision': float(precision),
+            'recall': float(recall),
+            'accuracy': float(accuracy),
+            'timestamp': datetime.datetime.now().isoformat()
+        }
 
 
     return resultados_test, y_pred_binary, y_test, y_pred_prob

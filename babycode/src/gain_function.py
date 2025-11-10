@@ -66,7 +66,7 @@ def ganancia_lgb_binary(y_pred, y_true):
     return 'ganancia', ganancia_total, True  # True = higher is better
 
 
-#------------------------------------------------------> ganancia x corte
+#------------------------------------------------------> ganancia acumulada
 
 def ganancia_ordenada (y_pred, y_true) -> float:
 
@@ -104,7 +104,7 @@ def ganancia_ordenada (y_pred, y_true) -> float:
     return 'ganancia', ganancia_maxima, True
 
 
-#--------------------------- > ganancia acumulada meseta
+#--------------------------- > ganancia acumulada calculando meseta
 
 def ganancia_ordenada_meseta(y_pred, y_true):
     """
@@ -131,7 +131,7 @@ def ganancia_ordenada_meseta(y_pred, y_true):
         'y_pred_proba': y_pred
     })
     
-    # 3. Calcular Ganancia Acumulada (igual que en R)
+    # 3. Calcular Ganancia Acumulada
     df_ordenado = df_eval.sort('y_pred_proba', descending=True)
     df_ordenado = df_ordenado.with_columns(
         pl.when(pl.col('y_true') == 1)
@@ -143,7 +143,7 @@ def ganancia_ordenada_meseta(y_pred, y_true):
         pl.col('ganancia_individual').cum_sum().alias('ganancia_acumulada')
     )
     
-    # 4. Calcular Meseta (El frollmean de R)
+    # 4. Calcular Meseta 
     window_size = 2001
     df_meseta = df_ordenado.with_columns(
         pl.col('ganancia_acumulada')
@@ -161,6 +161,32 @@ def ganancia_ordenada_meseta(y_pred, y_true):
     ).item()
 
     return 'ganancia_meseta', ganancia_maxima_meseta, True
+
+
+#----------------------------> Ganancia para cortes
+
+def calcular_ganancias_por_corte(y_pred_proba: np.ndarray, y_true: np.ndarray, cortes: list) -> list:
+    """
+    Calcula la ganancia acumulada para una lista específica de cortes (cantidad de envíos).
+    """
+    df_eval = pl.DataFrame({'y_true': y_true, 'prob': y_pred_proba})
+    
+    df_ordenado = df_eval.sort('prob', descending=True)
+    df_ordenado = df_ordenado.with_columns(
+        pl.when(pl.col('y_true') == 1)
+          .then(pl.lit(780000, dtype=pl.Int64))
+          .otherwise(pl.lit(-20000, dtype=pl.Int64))
+          .alias('ganancia_individual')
+    )
+    df_ordenado = df_ordenado.with_columns(
+        pl.col('ganancia_individual').cum_sum().alias('ganancia_acumulada')
+    )
+    
+    # .item(k-1) usa k-1 por el 0-indexing de Python
+    ganancias = [df_ordenado.item(k - 1, 'ganancia_acumulada') for k in cortes]
+    
+    return ganancias
+
 
     
 # --------------------------> Ganancia para definición de umbral

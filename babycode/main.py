@@ -91,7 +91,7 @@ def main():
     
     # 3 - Evaluar modelo en test
     best_params = cargar_mejores_hiperparametros(n_top = 1)
-    resultados_test, y_pred_binary, y_test, y_pred_prob = evaluar_en_test(df_f, params_best_model)
+    resultados_test, y_pred_binary, y_test, y_pred_prob = evaluar_en_test(df_f, best_params, repeticiones = 10, ksemillerio = 10)
 
     # Resumen de evaluación en test
     logger.info("=== RESUMEN DE EVALUACIÓN EN TEST ===")
@@ -106,7 +106,6 @@ def main():
 
 
     logger.info("=== GENERANDO TABLA DE DECISIÓN DE CORTE ===")
-    
 
     cortes = [9000, 9500, 10000, 10500, 12000, 12500, 13000, 16000, 18000]
 
