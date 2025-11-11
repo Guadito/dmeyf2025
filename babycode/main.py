@@ -91,51 +91,53 @@ def main():
     
     # 3 - Evaluar modelo en test
     best_params = cargar_mejores_hiperparametros(n_top = 1)
-    resultados_test, y_pred_binary, y_test, y_pred_prob = evaluar_en_test(df_f, best_params, repeticiones = 10, ksemillerio = 10)
+    resultados_test, y_pred_binary, y_test, y_pred_promedio_total = evaluar_en_test(df_f, best_params, repeticiones = 10, ksemillerio = 10)
 
     # Resumen de evaluación en test
     logger.info("=== RESUMEN DE EVALUACIÓN EN TEST ===")
     logger.info(f"Ganancia en test: {resultados_test['ganancia_test']:,.0f}")
     logger.info(f"Predicciones positivas: {resultados_test['predicciones_positivas']:,} ({resultados_test['porcentaje_positivas']:.2f}%)")
 
-    
     # Grafico de test
     logger.info("=== GRAFICO DE TEST ===")
     ruta_grafico_avanzado = crear_grafico_ganancia_avanzado(y_true=y_test, y_pred_proba=y_pred_prob)
     logger.info(f"Gráficos generados: {ruta_grafico_avanzado}")
 
+    generar_predicciones_finales(y_pred_binary)
 
-    logger.info("=== GENERANDO TABLA DE DECISIÓN DE CORTE ===")
 
-    cortes = [9000, 9500, 10000, 10500, 12000, 12500, 13000, 16000, 18000]
 
-    df_resultados = simular_cortes_kaggle(
-    y_pred_prob=y_pred_prob,
-    y_test=y_test,
-    cortes=cortes,
-    ganancia_por_corte=ganancia_por_corte,
-    random_state=42)
+    #logger.info("=== GENERANDO TABLA DE DECISIÓN DE CORTE ===")
+
+    #cortes = [9000, 9500, 10000, 10500, 12000, 12500, 13000, 16000, 18000]
+
+    #df_resultados = simular_cortes_kaggle(
+    #y_pred_prob=y_pred_prob,
+    #y_test=y_test,
+    #cortes=cortes,
+    #ganancia_por_corte=ganancia_por_corte,
+    #random_state=42)
 
     # Resume las ganancias promedio por corte
-    df_resumen = resumen_cortes(df_resultados)
-    print("\n=== RESULTADOS DE SIMULACIÓN DE CORTES ===")
-    print(df_resumen.to_string(index=False))
+    #df_resumen = resumen_cortes(df_resultados)
+    #print("\n=== RESULTADOS DE SIMULACIÓN DE CORTES ===")
+    #print(df_resumen.to_string(index=False))
 
     
     # 7 Entrenar modelo final
-    logger.info("=== ENTRENAMIENTO FINAL ===")
-    logger.info("Preparar datos para entrenamiento final")
-    X_train, y_train, X_predict, clientes_predict = preparar_datos_entrenamiento_final(df_f)
+    #logger.info("=== ENTRENAMIENTO FINAL ===")
+    #logger.info("Preparar datos para entrenamiento final")
+    #X_train, y_train, X_predict, clientes_predict = preparar_datos_entrenamiento_final(df_f)
 
     # Entrenar modelo final
-    logger.info("Entrenar modelo final")
-    modelo_final = entrenar_modelo_final(X_train, y_train, params_best_model)
+    #logger.info("Entrenar modelo final")
+    #modelo_final = entrenar_modelo_final(X_train, y_train, params_best_model)
 
     # Generar predicciones finales
-    logger.info("Generar predicciones finales")
+    #logger.info("Generar predicciones finales")
 
 
-    generar_predicciones_por_cantidad(modelo_final, X_predict, clientes_predict, cantidades = [9000, 9500, 10000, 10500, 12000, 12500, 13000, 16000, 18000])
+    #generar_predicciones_por_cantidad(modelo_final, X_predict, clientes_predict, cantidades = [9000, 9500, 10000, 10500, 12000, 12500, 13000, 16000, 18000])
 
     # 4 Guardar el DataFrame resultante
     #path = "Data/competencia_01_lag.csv"
