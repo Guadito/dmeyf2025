@@ -168,24 +168,41 @@ def ganancia_ordenada_meseta(y_pred, y_true):
 def calcular_ganancias_por_corte(y_pred_proba: np.ndarray, y_true: np.ndarray, cortes: list) -> list:
     """
     Calcula la ganancia acumulada para una lista específica de cortes (cantidad de envíos).
+    Maneja cortes fuera de rango retornando np.nan.
     """
+    # Crear DataFrame en Polars
     df_eval = pl.DataFrame({'y_true': y_true, 'prob': y_pred_proba})
     
+    # Ordenar por probabilidad descendente
     df_ordenado = df_eval.sort('prob', descending=True)
+    
+    # Calcular ganancia individual y acumulada
     df_ordenado = df_ordenado.with_columns(
         pl.when(pl.col('y_true') == 1)
-          .then(pl.lit(780000, dtype=pl.Int64))
-          .otherwise(pl.lit(-20000, dtype=pl.Int64))
+          .then(pl.lit(780_000, dtype=pl.Int64))
+          .otherwise(pl.lit(-20_000, dtype=pl.Int64))
           .alias('ganancia_individual')
     )
+    
     df_ordenado = df_ordenado.with_columns(
-        pl.col('ganancia_individual').cum_sum().alias('ganancia_acumulada')
+        pl.col('ganancia_individual').cumsum().alias('ganancia_acumulada')
     )
     
-    # .item(k-1) usa k-1 por el 0-indexing de Python
-    ganancias = [df_ordenado.item(k - 1, 'ganancia_acumulada') for k in cortes]
+    # Convertir la columna de ganancias acumuladas a NumPy
+    ganancia_array = df_ordenado['ganancia_acumulada'].to_numpy()
+    
+    # Calcular ganancias para cada corte
+    ganancias = []
+    for k in cortes:
+        idx = k - 1
+        if 0 <= idx < len(ganancia_array):
+            ganancias.append(ganancia_array[idx])
+        else:
+            logger.warning(f"Corte {k} fuera de rango (len={len(ganancia_array)}), se omite")
+            ganancias.append(np.nan)
     
     return ganancias
+
 
 
     

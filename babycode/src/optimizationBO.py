@@ -135,9 +135,7 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1, repeticiones
     params['n_train_used'] = n_train_used
     trial.set_user_attr('n_train_used', n_train_used)
 
-
-
-
+    
     logger.info(f"Trial {trial.number} - Configuración semillerio: {repeticiones} repeticiones x {ksemillerio} semillas = {repeticiones * ksemillerio} modelos totales")
 
 
@@ -173,18 +171,16 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1, repeticiones
                             callbacks=[lgb.early_stopping(50), lgb.log_evaluation(10)])
         
             # Obtener mejor iteracion 
-            best_iter_semilla= model.best_iteration #Mejor iteración de la semilla
-            lista_best_iters_ronda.append(best_iter_semilla)  #Guarda las mejores iteraciones de la repetición
-            lista_best_iters_total.append(best_iter_semilla) #Guarda las mejores iteraciones del trial
+            best_iter_semilla= model.best_iteration #Guardo la mejor iteración y score luego del early stopping aplicado
+            lista_best_iters_ronda.append(best_iter_semilla)  #Guardo el egistro de todas las semillas de la repetición actual
+            lista_best_iters_total.append(best_iter_semilla) #Acumula la información para todas las repeticiones del trial
 
-
-            y_pred_proba_i = model.predict(X_val, num_iteration=best_iter_semilla)
-            y_pred_acum += y_pred_proba_i
-
-        
-        y_pred_prom = y_pred_acum / len(semillas_ronda)
-        _, ganancia_ronda, _ = ganancia_ordenada_meseta(y_pred_prom, y_val)
-        lista_ganancias_repeticion.append(ganancia_ronda)
+            y_pred_proba_i = model.predict(X_val, num_iteration=best_iter_semilla)  #la predicción se hace solo hasta la iteración que fue “mejor” según early stopping 
+            y_pred_acum += y_pred_proba_i #lo acumulo
+ 
+        y_pred_prom = y_pred_acum / len(semillas_ronda)  #Promedio las predicciones del batch de semillas de la repetición
+        _, ganancia_ronda, _ = ganancia_ordenada_meseta(y_pred_prom, y_val) #Calculo la meseta de la ganancia por repetición
+        lista_ganancias_repeticion.append(ganancia_ronda) #Guardo la ganancia de la repetición
 
         # Log detallado de la repetición
         logger.info(f"Ganancia meseta: {ganancia_ronda:,.0f}")
@@ -195,26 +191,18 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1, repeticiones
     logger.info(f"FIN DEL TRIAL {trial.number} - Promedio de ganancias meseta: {ganancia_total_promedio:,.0f} ± {ganancia_sd:,.0f}")
 
     # Guardar información del trial
-    best_iter_promedio = int(np.mean(lista_best_iters_total))
-    
     num_boost_round_original = int(round(2 ** trial.params['num_boost_round_exp']))
     trial.set_user_attr('num_boost_round_original', num_boost_round_original)
-    trial.set_user_attr('best_iteration', int(best_iter_promedio))
-    trial.params['num_boost_round'] = best_iter_promedio #actualizar el num_boost_round
-    
-    if 'num_leaves_exp' in trial.params:
-        trial.params['num_leaves'] = int(round(2 ** trial.params['num_leaves_exp']))
-        del trial.params['num_leaves_exp']
 
-    if 'min_child_samples_exp' in trial.params:
-        trial.params['min_child_samples'] = int(round(2 ** trial.params['min_child_samples_exp']))
-        del trial.params['min_child_samples_exp']
+    best_iter_promedio = int(np.mean(lista_best_iters_total))
+    trial.set_user_attr('num_boost_round', int(best_iter_promedio))
 
-    if 'num_boost_round_exp' in trial.params:
-        trial.params['num_boost_round'] = int(round(2 ** trial.params['num_boost_round_exp']))
-        del trial.params['num_boost_round_exp']
+    num_leaves = int(round(2 ** num_leaves_exp))
+    trial.set_user_attr('num_leaves', num_leaves)
 
-    trial.set_user_attr('best_iteration', int(best_iter_promedio))
+    min_child_samples = int(round(2 ** trial.params['min_child_samples_exp']))
+    trial.set_user_attr('min_child_samples', min_child_samples)
+
     trial.set_user_attr('value', ganancia_total_promedio)
     trial.set_user_attr('state', "COMPLETE")
     trial.set_user_attr('datetime', datetime.datetime.now().isoformat())
