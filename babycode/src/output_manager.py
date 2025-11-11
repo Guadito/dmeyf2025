@@ -106,7 +106,6 @@ def guardar_resultados_test(resultados_test:dict, archivo_base=None):
 
 #-----------------------------> Guardar predicciones finales
 
-
 def guardar_predicciones_finales(resultados_df: pd.DataFrame, nombre_archivo=None) -> str:
     """
     Guarda las predicciones finales en un archivo CSV en la carpeta predict.

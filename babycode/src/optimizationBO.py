@@ -158,11 +158,8 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1, repeticiones
         
         lista_best_iters_ronda = []
 
-
-        logger.info("="*80)
-        logger.info(f"[Trial {trial.number}] Repetición {repe+1}/{repeticiones}")
-        logger.info(f"Semillas en esta ronda: {list(semillas_ronda)}")
-        logger.info("="*80)
+        logger.info(f"Trial {trial.number} - Repetición {repe+1}/{repeticiones}")
+        logger.info(f"Semillas en esta ronda: {semillas_ronda.tolist()}")
 
 
         for i, semilla in enumerate(semillas_ronda, start=1):    
@@ -189,26 +186,38 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1, repeticiones
         _, ganancia_ronda, _ = ganancia_ordenada_meseta(y_pred_prom, y_val)
         lista_ganancias_repeticion.append(ganancia_ronda)
 
-            # Log detallado de la repetición
-        logger.info(f"[Trial {trial.number}] Repetición {repe+1} completada:")
+        # Log detallado de la repetición
         logger.info(f"Ganancia meseta: {ganancia_ronda:,.0f}")
 
     ganancia_total_promedio = np.mean(lista_ganancias_repeticion)
     ganancia_sd = np.std(lista_ganancias_repeticion)
 
-    logger.info("FINAL DEL TRIAL")
-    logger.info(f"Trial {trial.number} - Promedio de ganancias (meseta): {ganancia_total_promedio:,.0f} ± {ganancia_sd:,.0f}")
-    logger.info(f"Iteraciones totales: {lista_best_iters_total}")
-    logger.info("="*80)
+    logger.info(f"FIN DEL TRIAL {trial.number} - Promedio de ganancias meseta: {ganancia_total_promedio:,.0f} ± {ganancia_sd:,.0f}")
 
     # Guardar información del trial
     best_iter_promedio = int(np.mean(lista_best_iters_total))
-    logger.info(f"Best iter promedio para trial {trial.number}: {best_iter_promedio}")
-
+    
     num_boost_round_original = int(round(2 ** trial.params['num_boost_round_exp']))
     trial.set_user_attr('num_boost_round_original', num_boost_round_original)
     trial.set_user_attr('best_iteration', int(best_iter_promedio))
     trial.params['num_boost_round'] = best_iter_promedio #actualizar el num_boost_round
+    
+    if 'num_leaves_exp' in trial.params:
+        trial.params['num_leaves'] = int(round(2 ** trial.params['num_leaves_exp']))
+        del trial.params['num_leaves_exp']
+
+    if 'min_child_samples_exp' in trial.params:
+        trial.params['min_child_samples'] = int(round(2 ** trial.params['min_child_samples_exp']))
+        del trial.params['min_child_samples_exp']
+
+    if 'num_boost_round_exp' in trial.params:
+        trial.params['num_boost_round'] = int(round(2 ** trial.params['num_boost_round_exp']))
+        del trial.params['num_boost_round_exp']
+
+    trial.set_user_attr('best_iteration', int(best_iter_promedio))
+    trial.set_user_attr('value', ganancia_total_promedio)
+    trial.set_user_attr('state', "COMPLETE")
+    trial.set_user_attr('datetime', datetime.datetime.now().isoformat())
         
     guardar_iteracion(trial, ganancia_total_promedio, archivo_base=None)
     
@@ -335,6 +344,7 @@ def optimizar(df: pd.DataFrame, n_trials: int, study_name: str = None,
 
 def evaluar_en_test_semillerio(df: pd.DataFrame,
                                mejores_params: dict,
+                               cortes : list,
                                undersampling: int = 1,
                                repeticiones: int = 1,
                                ksemillerio: int = 1) -> tuple:
@@ -385,6 +395,10 @@ def evaluar_en_test_semillerio(df: pd.DataFrame,
     mganancias = np.zeros((repeticiones, len(cortes)))
     y_pred_promedio_total = np.zeros(len(X_test))  # Para acumular probabilidades promedio de todas las repeticiones
 
+    # Crear carpeta para bases de datos si no existe
+    path_db = os.path.join(BUCKET_NAME, "modelos_modelos")
+    os.makedirs(path_db, exist_ok=True)
+
     # Loop sobre repeticiones
     for repe in range(repeticiones):
         desde = repe * ksemillerio
@@ -397,8 +411,7 @@ def evaluar_en_test_semillerio(df: pd.DataFrame,
         for semilla in semillas_ronda:
             mejores_params['random_state'] = semilla
 
-            arch_modelo = os.path.join(DIR_MODELITOS, f"mod_{semilla}.txt")
-            os.makedirs(DIR_MODELITOS, exist_ok=True)
+            arch_modelo = os.path.join(path_db, f"mod_{semilla}.txt")
 
             model = lgb.train(mejores_params, train_data, num_boost_round=num_boost_round)
             model.save_model(arch_modelo)
