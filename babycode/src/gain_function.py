@@ -185,7 +185,7 @@ def calcular_ganancias_por_corte(y_pred_proba: np.ndarray, y_true: np.ndarray, c
     )
     
     df_ordenado = df_ordenado.with_columns(
-        pl.col('ganancia_individual').cumsum().alias('ganancia_acumulada')
+        pl.col('ganancia_individual').cum_sum().alias('ganancia_acumulada')
     )
     
     # Convertir la columna de ganancias acumuladas a NumPy

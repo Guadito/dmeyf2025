@@ -16,7 +16,7 @@ from src.kaggle import *
 import gc
 from pathlib import Path
 import numpy as np
-
+logging.getLogger().setLevel(logging.ERROR)
 
 
 # Crear carpeta de logs dentro del bucket
@@ -87,10 +87,10 @@ def main():
 
     # 2 - optimización de hiperparámetros
     logger.info("=== INICIANDO OPTIMIZACIÓN DE HIPERPARAMETROS ===")
-    study = optimizar(df_f, n_trials= 30, undersampling = 0.05, repeticiones = 3, ksemillerio = 5)  
+    study = optimizar(df_f, n_trials= 15, undersampling = 0.05, repeticiones = 3, ksemillerio = 5)  
     
     # 3 - Evaluar modelo en test
-    best_params = cargar_mejores_hiperparametros(n_top = 1)
+    best_params = cargar_mejores_hiperparametros_completo(n_top = 1)
     cortes = [9000, 9500, 10000, 10500, 12000, 12500, 13000, 16000, 18000]
     resultados_test, y_pred_binary, y_test, y_pred_promedio_total = evaluar_en_test_semillerio(df_f, best_params, cortes, repeticiones = 10, ksemillerio = 10)
 

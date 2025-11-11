@@ -85,6 +85,7 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1, repeticiones
     # Hiperparámetros
     params = {
         'verbosity': -1,
+        'verbose': -1, 
         'metric': 'None',
         'objective': 'binary',
         'max_bin': PARAMETROS_LGBM['max_bin'], 
@@ -156,8 +157,7 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1, repeticiones
         
         lista_best_iters_ronda = []
 
-        logger.info(f"Trial {trial.number} - Repetición {repe+1}/{repeticiones}")
-        logger.info(f"Semillas en esta ronda: {semillas_ronda.tolist()}")
+        logger.info(f"Trial {trial.number} - Repetición {repe+1}/{repeticiones} - Semillas en esta ronda: {semillas_ronda.tolist()}")
 
 
         for i, semilla in enumerate(semillas_ronda, start=1):    
@@ -400,7 +400,7 @@ def evaluar_en_test_semillerio(df: pd.DataFrame,
             mejores_params['random_state'] = semilla
 
             arch_modelo = os.path.join(path_db, f"mod_{semilla}.txt")
-
+            
             model = lgb.train(mejores_params, train_data, num_boost_round=num_boost_round)
             model.save_model(arch_modelo)
 
@@ -413,9 +413,13 @@ def evaluar_en_test_semillerio(df: pd.DataFrame,
         y_pred_promedio_total += y_pred_promedio_ronda / repeticiones  # Promedio final sobre todas las repeticiones
 
         # Calcular ganancias por corte
-        ganancias_ronda = calcular_ganancias_por_corte(y_pred_promedio_ronda, y_test, cortes)
+        try: 
+            ganancias_ronda = calcular_ganancias_por_corte(y_pred_promedio_ronda, y_test, cortes)
+        except Exception as e:
+            logger.warning(f"No se pudo calcular la ganancia para esta repetición: {e}")
+            ganancias_ronda = [np.nan] * len(cortes)  # o [0]*len(cortes) si preferís
+        
         mganancias[repe, :] = ganancias_ronda
-
         logger.info(f"Repetición {repe+1}: Ganancias por corte = {dict(zip(cortes, ganancias_ronda))}")
 
     # Determinar mejor corte promedio
