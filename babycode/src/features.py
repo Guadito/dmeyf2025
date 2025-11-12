@@ -37,98 +37,114 @@ def realizar_feature_engineering (df: pd.DataFrame, lags:int = 1) -> pd.DataFram
 
 #----------------------------> selecciona variables de montos 
 
-def select_col_montos(df: pd.DataFrame) -> list:
-    """
+def select_col_montos(df: pl.DataFrame) -> list[str]:
+    """"
     Selecciona columnas de "montos" de un DataFrame según patrones:
       - columnas que empiezan con 'm'
-      - columnas que contienen 'Master_m o Visa_m'
+      - columnas que contienen 'Master_m' o 'Visa_m'
     Siempre excluye: 'numero_de_cliente' y 'foto_mes'
     
     Parámetros:
-        df (pd.DataFrame): DataFrame original
-
+        df: DataFrame de Polars
     Retorna:
         list: columnas seleccionadas
     """
-    # patrón: empieza con m  O contiene _m
-    pattern_incl = re.compile(r'(^m|Master_m|Visa_m)')
-
-    # columnas que cumplen el patrón
-    selected_cols = [col for col in df.columns if pattern_incl.search(col)]
-
-    # excluir columnas específicas
+    import polars.selectors as cs
+    
+    # Seleccionar columnas que empiezan con 'm' o contienen los patrones
+    selected = df.select(
+        cs.starts_with("m") | cs.contains("Master_m") | cs.contains("Visa_m")
+    ).columns
+    
+    # Excluir columnas específicas
     excluded = {"numero_de_cliente", "foto_mes"}
-    selected_cols = [col for col in selected_cols if col not in excluded]
-
-    return selected_cols
+    return [col for col in selected if col not in excluded]
 
 #-----------------------------------------------------> Rank positivo batch
 
-def feature_engineering_rank_pos_batch(df: pd.DataFrame, columnas: list[str]) -> pd.DataFrame:
+def feature_engineering_rank_pos_batch(df: pl.DataFrame, columnas: list[str]) -> pl.DataFrame:
     """
     Genera rankings normalizados por signo para las columnas especificadas,
-    procesando los datos por 'foto_mes' y columna para reducir el uso de memoria.
+    procesando los datos por 'foto_mes' usando DuckDB.
     """
-    import duckdb
-
+    
     if not columnas:
         raise ValueError("La lista de columnas no puede estar vacía")
-
+    
     columnas_validas = [col for col in columnas if col in df.columns]
     if not columnas_validas:
         raise ValueError("No hay columnas válidas para rankear")
-
+    
     logger.info(f"Generando ranking por batch: {len(columnas_validas)} columnas válidas.")
+    
     con = duckdb.connect(database=":memory:")
     con.execute("SET threads=1;")
     con.execute("SET preserve_insertion_order=false;")
     con.execute("SET memory_limit='2GB';")
-
+    
     df_result = []
-
-    for mes in sorted(df["foto_mes"].unique()):
-        df_mes = df[df["foto_mes"] == mes].copy()
-        logger.info(f"Procesando foto_mes={mes} con {len(df_mes)} filas...")
-
+    
+    for mes in sorted(df["foto_mes"].unique().to_list()):
+        logger.info(f"Procesando foto_mes={mes} con {df.filter(pl.col('foto_mes') == mes).height} filas...")
+        
+        # Filtrar el mes en Polars
+        df_mes = df.filter(pl.col("foto_mes") == mes)
+        
+        # Registrar en DuckDB
         con.register("df_temp", df_mes)
-
+        
+        # Construir SQL para todas las columnas de una vez
+        select_parts = ["foto_mes"]
+        
+        # Agregar columnas que no se rankean
+        cols_no_rankear = [c for c in df_mes.columns if c not in columnas_validas and c != "foto_mes"]
+        select_parts.extend(cols_no_rankear)
+        
+        # Agregar columnas rankeadas
         for col in columnas_validas:
-            sql = f"""
-            SELECT
-                {col},
-                CASE
-                    WHEN {col} = 0 THEN 0.0
-                    ELSE PERCENT_RANK() OVER (
-                        PARTITION BY SIGN({col})
-                        ORDER BY {col}
-                    )
-                END AS rank_col
-            FROM df_temp
+            rank_expr = f"""
+            CASE
+                WHEN {col} = 0 THEN 0.0
+                ELSE PERCENT_RANK() OVER (
+                    PARTITION BY SIGN({col})
+                    ORDER BY {col}
+                )
+            END AS {col}
             """
-            df_rank = con.execute(sql).df()
-            df_mes[col] = df_rank["rank_col"]
-
+            select_parts.append(rank_expr)
+        
+        sql = f"SELECT {', '.join(select_parts)} FROM df_temp"
+        
+        # Ejecutar y convertir a Polars
+        df_mes_ranked = con.execute(sql).pl()
+        
         con.unregister("df_temp")
-        df_result.append(df_mes)
-
+        df_result.append(df_mes_ranked)
+    
     con.close()
-    resultado = pd.concat(df_result, ignore_index=True)
-    logger.info(f"Feature engineering completado por batch y columna. Shape final: {resultado.shape}")
+    
+    # Concatenar en Polars
+    resultado = pl.concat(df_result)
+    
+    logger.info(f"Feature engineering completado. Shape final: {resultado.shape}")
     return resultado
 
 
-
-
-
 #-------------------------------> Crea LAG y DELTA en batch.
-def feature_engineering_lag_delta_batch(df: pd.DataFrame, columnas: list[str], cant_lag: int = 1, batch_size: int = 25) -> pd.DataFrame:
+
+def feature_engineering_lag_delta_batch(
+    df: pl.DataFrame, 
+    columnas: list[str], 
+    cant_lag: int = 1, 
+    batch_size: int = 25
+) -> pl.DataFrame:
     """
-    Genera variables de lag y delta para los atributos especificados utilizando SQL (DuckDB).
+    Genera variables de lag y delta para los atributos especificados utilizando DuckDB.
     Procesa columnas en batches para evitar problemas de memoria.
     
     Parameters
     ----------
-    df : pd.DataFrame
+    df : pl.DataFrame
         DataFrame con los datos originales.
     columnas : list[str]
         Lista de atributos para los cuales generar lags y deltas.
@@ -139,9 +155,10 @@ def feature_engineering_lag_delta_batch(df: pd.DataFrame, columnas: list[str], c
     
     Returns
     -------
-    pd.DataFrame
+    pl.DataFrame
         DataFrame con las variables de lag y delta agregadas.
     """
+    
     logger.info(f"Generando {cant_lag} lags y deltas para {len(columnas)} atributos en batches de {batch_size}")
     
     if columnas is None or len(columnas) == 0:
@@ -153,8 +170,13 @@ def feature_engineering_lag_delta_batch(df: pd.DataFrame, columnas: list[str], c
         logger.error("El DataFrame debe contener 'numero_de_cliente' y 'foto_mes'")
         raise ValueError("Columnas requeridas no encontradas")
     
+    # Configurar DuckDB
+    con = duckdb.connect(database=":memory:")
+    con.execute("SET threads TO 4;")
+    con.execute("SET memory_limit='4GB';")
+    
     # Iniciar con el DataFrame original
-    df_result = df.copy()
+    df_result = df.clone()
     
     # Procesar columnas en batches
     num_batches = (len(columnas) - 1) // batch_size + 1
@@ -165,51 +187,63 @@ def feature_engineering_lag_delta_batch(df: pd.DataFrame, columnas: list[str], c
         
         logger.info(f"Procesando batch {batch_num}/{num_batches}: {len(batch_cols)} columnas")
         
+        # Registrar DataFrame en DuckDB
+        con.register("df_temp", df)
+        
         # Construir la consulta SQL solo para este batch
-        sql = "SELECT numero_de_cliente, foto_mes"
+        sql_parts = ["numero_de_cliente", "foto_mes"]
         
         for attr in batch_cols:
             if attr in df.columns:
                 for j in range(1, cant_lag + 1):
-                    sql += f', LAG("{attr}", {j}) OVER w AS "{attr}_lag_{j}"'
-                    sql += f', ("{attr}" - LAG("{attr}", {j}) OVER w) AS "{attr}_delta_{j}"'
+                    # Escapar nombres de columnas con comillas dobles
+                    sql_parts.append(f'LAG("{attr}", {j}) OVER w AS "{attr}_lag_{j}"')
+                    sql_parts.append(f'("{attr}" - LAG("{attr}", {j}) OVER w) AS "{attr}_delta_{j}"')
             else:
                 logger.warning(f"El atributo {attr} no existe en el DataFrame")
         
-        sql += " FROM df WINDOW w AS (PARTITION BY numero_de_cliente ORDER BY foto_mes)"
+        sql = f"""
+        SELECT {', '.join(sql_parts)}
+        FROM df_temp 
+        WINDOW w AS (PARTITION BY numero_de_cliente ORDER BY foto_mes)
+        """
         
         logger.debug(f"Ejecutando query para batch {batch_num}")
         
-        # Ejecutar la consulta SQL
-        df_batch = duckdb.query(sql).df()
-
-        # Convertir a float32 inmediatamente para ahorrar memoria
-        float_cols = df_batch.select_dtypes(include=['float64']).columns
-        if len(float_cols) > 0:
-            df_batch[float_cols] = df_batch[float_cols].astype('float32')
-       
+        # Ejecutar la consulta SQL y convertir a Polars
+        df_batch = con.execute(sql).pl()
+        
+        # Convertir float64 a float32 para ahorrar memoria
+        float_cols = [col for col in df_batch.columns 
+                     if df_batch[col].dtype == pl.Float64]
+        if float_cols:
+            df_batch = df_batch.with_columns([
+                pl.col(c).cast(pl.Float32) for c in float_cols
+            ])
+        
+        # Unregister para liberar memoria
+        con.unregister("df_temp")
         
         # Mergear con el resultado acumulado
-        cols_to_merge = [c for c in df_batch.columns if c not in ['numero_de_cliente', 'foto_mes']]
+        cols_to_merge = [c for c in df_batch.columns 
+                        if c not in ['numero_de_cliente', 'foto_mes']]
         
-        df_result = df_result.merge(
-            df_batch[['numero_de_cliente', 'foto_mes'] + cols_to_merge],
+        df_result = df_result.join(
+            df_batch.select(['numero_de_cliente', 'foto_mes'] + cols_to_merge),
             on=['numero_de_cliente', 'foto_mes'],
             how='left'
         )
         
-        logger.info(f"Batch {batch_num} completado. Total columnas: {df_result.shape[1]}")
+        logger.info(f"Batch {batch_num} completado. Total columnas: {df_result.width}")
         
         # Limpiar memoria
         del df_batch
-        import gc
         gc.collect()
     
-    logger.info(f"Feature engineering completado. DataFrame resultante con {df_result.shape[1]} columnas")
+    con.close()
+    
+    logger.info(f"Feature engineering completado. DataFrame resultante con {df_result.width} columnas")
     return df_result
-
-
-
 
 # --------------------------> clase pesada 
 
@@ -228,9 +262,8 @@ def asignar_pesos(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-
-
 # ---------------------> unsersampling para clase 0
+
 def aplicar_undersampling_clase0(
     df: pd.DataFrame,
     undersampling: float,
@@ -287,7 +320,6 @@ def aplicar_undersampling_clase0(
         """).df()
         return result
    
-    # Query principal - usando ORDER BY random() con seed
     result = duckdb.sql(f"""
         WITH
         ids_ever_1 AS (
@@ -328,12 +360,26 @@ def aplicar_undersampling_clase0(
 #--------------->
 
 def feature_engineering_lag_delta_polars(
-    df: pd.DataFrame, 
+    df: pl.DataFrame, 
     columnas: list[str], 
     cant_lag: int = 1
-) -> pd.DataFrame:
+) -> pl.DataFrame:
     """
+    Genera variables de lag y delta usando Polars puro.
     
+    Parameters
+    ----------
+    df : pl.DataFrame
+        DataFrame con los datos originales.
+    columnas : list[str]
+        Lista de atributos para los cuales generar lags y deltas.
+    cant_lag : int, default=1
+        Cantidad de lags a generar para cada atributo.
+    
+    Returns
+    -------
+    pl.DataFrame
+        DataFrame con las variables de lag y delta agregadas.
     """
     logger.info(f"Generando {cant_lag} lags y deltas para {len(columnas)} atributos")
     
@@ -355,13 +401,14 @@ def feature_engineering_lag_delta_polars(
     
     logger.info(f"Procesando {len(columnas_validas)} columnas válidas")
     
-    # Convertir a Polars LazyFrame
-    df_pl = pl.from_pandas(df).lazy()
+    # Trabajar con LazyFrame para optimización
+    df_pl = df.lazy()
     
-    # Calcular periodo0
-    df_pl = df_pl.with_columns(
-        ((pl.col("foto_mes") // 100) * 12 + (pl.col("foto_mes") % 100)).alias("periodo0")
-    )
+    # Calcular periodo0 si no existe
+    if 'periodo0' not in df.columns:
+        df_pl = df_pl.with_columns(
+            ((pl.col("foto_mes") // 100) * 12 + (pl.col("foto_mes") % 100)).alias("periodo0")
+        )
     
     expresiones = []
     
@@ -384,12 +431,15 @@ def feature_engineering_lag_delta_polars(
     
     # Aplicar transformaciones
     df_pl = df_pl.with_columns(expresiones)
+
+    # Eliminar periodo0 si fue creado
+    if drop_periodo0:
+        df_pl = df_pl.drop("periodo0")
     
-    # Ejecutar
+
     logger.info("Ejecutando query")
-    df_result = df_pl.collect().to_pandas()
+    df_result = df_pl.collect()
     
-    import gc
     gc.collect()
     
     logger.info(f"Completado: {df_result.shape}")
@@ -397,69 +447,83 @@ def feature_engineering_lag_delta_polars(
     
     return df_result
 
-
 # ---------------------->  Medias móviles
 
-def feature_engineering_rolling_mean(df, columnas_validas, ventana=3):
-    logger.info(f"Realizando medias móviles a {len(columnas_validas)} columnas. Promedio de {ventana} meses ")
+def feature_engineering_rolling_mean(df: pl.DataFrame, columnas_validas: list[str], ventana: int = 3) -> pl.DataFrame:
+    """
+    Calcula medias móviles para las columnas especificadas usando Polars puro.
     
-    df_pl = pl.from_pandas(df).lazy()
-
+    Parameters
+    ----------
+    df : pl.DataFrame
+        DataFrame con los datos originales.
+    columnas_validas : list[str]
+        Lista de columnas para calcular rolling mean.
+    ventana : int, default=3
+        Tamaño de la ventana (en meses).
+    
+    Returns
+    -------
+    pl.DataFrame
+        DataFrame con las columnas de rolling mean agregadas.
+    """
+    import gc
+    
+    logger.info(f"Realizando medias móviles a {len(columnas_validas)} columnas. Promedio de {ventana} meses")
+    
+    df_pl = df.lazy()
+    
     # Crear periodo0 si no existe
     if 'periodo0' not in df.columns:
         df_pl = df_pl.with_columns(
-            ((pl.col("foto_mes") // 100) * 12 + (pl.col("foto_mes") % 100)).alias("periodo0"))
+            ((pl.col("foto_mes") // 100) * 12 + (pl.col("foto_mes") % 100)).alias("periodo0")
+        )
         drop_periodo0 = True
     else:
         drop_periodo0 = False
-
+    
     # Expresiones rolling
     expresiones = [
-        pl.col(col).shift(1)
+        pl.col(col)
+        .shift(1)
         .rolling_mean(window_size=ventana, min_periods=1)
         .over("numero_de_cliente", order_by="periodo0")
         .alias(f"{col}_rolling_mean_{ventana}")
         for col in columnas_validas
     ]
-
+    
     df_pl = df_pl.with_columns(expresiones)
-
+    
+    # Eliminar periodo0 si fue creado aquí
     if drop_periodo0:
         df_pl = df_pl.drop("periodo0")
 
-    df_result = df_pl.collect().to_pandas()
-    logger.info(f"Completado: {df_result.shape[0]:,} filas x {df_result.shape[1]:,} columnas")
+    df_result = df_pl.collect()
+
+    logger.info(f"Completado: {df_result.height:,} filas x {df_result.width:,} columnas")
     
     gc.collect()
+    
     return df_result
 
 
 
 # -------------------------------> reemplazo de ceros
 
-def zero_replace(df, group_cols='foto_mes'):
-    """
-    Reemplaza por NaN los ceros de las columnas que sean todas cero en un grupo (por mes).
-    Versión eficiente para grandes datasets.
-    """
-    cols = df.columns.drop(group_cols)
+def zero_replace(df: pl.DataFrame, group_col: str = "foto_mes") -> pl.DataFrame:
+    """Reemplaza con NAN aquellas columnas que tienen 0 en todos sus valores"""
     
-    # Calculamos por grupo si cada columna es todo cero
-    todo_cero_por_mes = df.groupby(group_cols)[cols].agg(lambda x: (x==0).all())
+    cols = [c for c in df.columns if c != group_col]
     
-    for mes, row in todo_cero_por_mes.iterrows():
-        cols_a_reemplazar = row[row].index.tolist()  # columnas True
-        n_cols = len(cols_a_reemplazar)
-        if n_cols > 0:
-            logger.info(f'Mes {mes}: {n_cols} columna(s) con todos ceros -> reemplazando por NaN')
-
-            mask = df[group_cols] == mes
-            df.loc[mask, cols_a_reemplazar] = np.nan
-        else:
-            logger.info(f'Mes {mes}: ninguna columna con todos ceros')
+    exprs = [
+        pl.when((pl.col(c) == 0).all().over(group_col) & (pl.col(c) == 0))
+        .then(None)
+        .otherwise(pl.col(c))
+        .alias(c)
+        for c in cols
+    ]
     
-    return df
-
+    return df.with_columns(exprs)
 
 
 # -------------------------------> Eliminar meses
@@ -477,17 +541,94 @@ def filtrar_meses(df, col='foto_mes', mes_inicio=202003, mes_fin=202007):
 
 # -------------------> Neutralizacion de columnas
 
-def neutral_columns(df, columnas):
+def neutral_columns(df: pl.DataFrame, columnas: list[str]) -> pl.DataFrame:
     """
-    Rellena las columnas indicadas con NaN.
+    Rellena las columnas indicadas con null (NaN en Polars).
     
     Parámetros:
     - df: DataFrame original
     - columnas: lista de nombres de columnas a rellenar
     
     Devuelve:
-    - DataFrame modificado (las columnas especificadas ahora contienen solo NaN)
+    - DataFrame modificado (las columnas especificadas ahora contienen solo null)
     """
-    cols_existentes = df.columns.intersection(columnas)
-    df[cols_existentes] = np.nan
+    # Filtrar solo columnas que existen en el DataFrame
+    cols_existentes = [c for c in columnas if c in df.columns]
+    
+    # Crear expresiones que reemplazan con null
+    return df.with_columns([pl.lit(None).alias(c) for c in cols_existentes])
+
+# -------------> drop columns
+
+def drop_columns(df: pl.DataFrame, columnas: list[str]) -> pl.DataFrame:
+    """
+    Elimina las columnas indicadas del DataFrame.
+    
+    Parámetros:
+    - df: DataFrame original
+    - columnas: lista de nombres de columnas a eliminar
+    
+    Devuelve:
+    - DataFrame sin las columnas especificadas
+    """
+    # Filtrar solo columnas que existen en el DataFrame
+    cols_existentes = [c for c in columnas if c in df.columns]
+    
+    return df.drop(cols_existentes)
+
+
+# -------------> reg_slope
+
+def feature_engineering_reg(df, columnas: list[str]) -> pl.DataFrame:
+    """
+    Genera reg_slope para los atributos especificados utilizando SQL.
+
+    Parameters:
+    -----------
+    df : pd.DataFrame
+        DataFrame con los datos
+    columnas : list
+        Lista de atributos para los cuales generar tendencias. Si es None, no se generan tendencias.
+
+    Returns:
+    --------
+    pl.DataFrame
+        DataFrame con las variables de tendencia agregadas
+    """
+
+    logger.info(f"Realizando feature engineering de tendencia para {len(columnas) if columnas else 0} atributos")
+
+    if columnas is None or len(columnas) == 0:
+        logger.warning("No se especificaron atributos para generar lags")
+        return df
+
+    # Construir la consulta SQL
+    sql = "SELECT *"
+
+    # Agregar los lags para los atributos especificados
+    for attr in columnas:
+        if attr in df.columns:
+            sql += f", regr_slope({attr}, cliente_antiguedad) over ventana as {attr}_trend_6m"
+        else:
+            logger.warning(f"El atributo {attr} no existe en el DataFrame")
+
+    # Completar la consulta
+    sql += " FROM df"
+    sql += " window ventana as (partition by numero_de_cliente order by foto_mes rows between 6 preceding and current row)"
+    sql += " ORDER BY numero_de_cliente, foto_mes"
+
+    # Ejecutar la consulta SQL
+    con = duckdb.connect(database=":memory:")
+    con.register("df", df)
+    df = con.execute(sql).pl()
+    con.close()
+
+
+    df_result = df_pl.collect().to_pandas()
+    
+    logging.info(df.head())
+
+    logger.info(f"Feature engineering [trends] completado")
+    logger.info(df.shape)
+
     return df

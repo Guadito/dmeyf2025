@@ -14,5 +14,16 @@ Seguir trabajando en HP:
 5) podría subir rangos más bajos o liberar todos los rangos para ver qué pasa.
 
 
+8)  2 lags y delta
+    undersampling 0.05
+    rank pos
+    Sumo medias móviles x3
+    [semillerio 100 semillas. 1 repeticion.] 
+    neutralizo col = ['mprestamos_personales', 'cprestamos_personales']
+    columnas zeros as nan
+    meses final 202009, 202010, 202011, 202012, 202101, 202102, 202103, 202104  "competencias_2_gcp_7"  
+    predicción en 202106
+    315.999 en kaggle
 
-
+9) Idem anterior. meses final  "competencias_2_gcp_8"
+    

@@ -47,7 +47,8 @@ logger.info(f"DT crudo DATA_PATH_BASE_VM: {DATA_PATH_BASE_VM}")
 logger.info(f"DT transformado DATA_PATH_2: {DATA_PATH_TRANS_VM}")
 logger.info(f"BUCKET_NAME: {BUCKET_NAME}")
 logger.info(f"SEMILLAS: {SEMILLAS}")
-logger.info(f"MES_TRAIN: {MES_TRAIN}")
+logger.info(f"Meses de entrenamiento para bayesiana: {MES_TRAIN}")
+logger.info(f"Meses de entrenamiento para testeo: {MES_TRAIN2}")
 logger.info(f"MES_VAL: {MES_VAL}")
 logger.info(f"MES_TEST: {MES_TEST}")
 logger.info(f"TRAIN_FINAL: {FINAL_TRAIN}")
@@ -75,13 +76,15 @@ def main():
     #df_f = realizar_feature_engineering(df_f, lags = 3)
     #df_f = filtrar_meses(df_f, mes_inicio=202003, mes_fin=202007)
     df_f = zero_replace(df_f)
+    
     col = ['mprestamos_personales', 'cprestamos_personales']
     df_f = neutral_columns (df_f, col)
+    
     col_montos = select_col_montos(df_f)
     df_f = feature_engineering_rank_pos_batch(df_f, col_montos)
+    
     col = [c for c in df_f.columns if c not in ['numero_de_cliente', 'foto_mes', 'clase_ternaria']]
     df_f = feature_engineering_lag_delta_polars(df_f, col, cant_lag = 2)
-    col = [c for c in df_f.columns if c not in ['numero_de_cliente', 'foto_mes', 'clase_ternaria']]
     df_f = feature_engineering_rolling_mean(df_f, col, ventana = 3)
 
 

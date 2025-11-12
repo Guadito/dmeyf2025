@@ -1,5 +1,6 @@
 import logging
 import pandas as pd
+import porlar as pl
 import os
 import datetime
 import sys
@@ -12,24 +13,24 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
-def cargar_datos(path: str) -> pd.DataFrame | None:  #Se le pide que retorne un DataFrame o None 
+def cargar_datos(path: str) -> pl.DataFrame | None:  #Se le pide que retorne un DataFrame o None 
     '''
-    Carga un CSV desde 'path' y retorna un pandas.DataFrame.
+    Carga un CSV desde 'path' y retorna un DataFrame.
     '''
 
     logger.info(f"Cargando dataset desde {path}")
     try:
-        df = pd.read_csv(path)
+        df = pl.read_csv(path)
         logger.info(f"Dataset cargado con {df.shape[0]} filas y {df.shape[1]} columnas") 
         return df
     except Exception as e:
         logger.error(f"Error al cargar el dataset: {e}")
-        raise #En caso de falla, sale de la funcion y propaga el error 
+        raise 
 
 
 #----------------------> creación de clase ternaria a partir de la identificación de los períodos
 
-def crear_clase_ternaria(df: pd.DataFrame) -> pd.DataFrame:
+def crear_clase_ternaria(df: pl.DataFrame) -> pd.DataFrame:
     """
     Crea la clase ternaria para un DataFrame de clientes usando DuckDB.
     Devuelve el DataFrame original con columna 'clase_ternaria'.
@@ -90,7 +91,7 @@ def crear_clase_ternaria(df: pd.DataFrame) -> pd.DataFrame:
         ORDER BY clase_ternaria, foto_mes
     """).df()
 
-    pivot_df = resumen_clase_mes.pivot(index='clase_ternaria', columns='foto_mes', values='cantidad_clientes').fillna(0)
+    pivot_df = resumen_clase_mes.pivot(index='clase_ternaria', columns='foto_mes', values='cantidad_clientes').fill_null(0)
     print(pivot_df)
 
     # Join con el DataFrame original
@@ -102,12 +103,12 @@ def crear_clase_ternaria(df: pd.DataFrame) -> pd.DataFrame:
         LEFT JOIN clases c
             ON df_tmp.numero_de_cliente = c.numero_de_cliente
            AND df_tmp.foto_mes = c.foto_mes
-    """).df()
+    """).pl()
 
     # Log resumen final
-    n_continua = (df_final['clase_ternaria'] == "CONTINUA").sum()
-    n_baja1 = (df_final['clase_ternaria'] == "BAJA+1").sum()
-    n_baja2 = (df_final['clase_ternaria'] == "BAJA+2").sum()
+    n_continua = (df_final.filter(pl.col("clase_ternaria") == "CONTINUA")).height
+    n_baja1 = (df_final.filter(pl.col("clase_ternaria") == "BAJA+1")).height
+    n_baja2 = (df_final.filter(pl.col("clase_ternaria") == "BAJA+2")).height
     total_bajas = n_baja1 + n_baja2
 
     logger.info(f"Clase ternaria creada: CONTINUA={n_continua}, BAJA+1={n_baja1}, BAJA+2={n_baja2}, Total bajas={total_bajas}")

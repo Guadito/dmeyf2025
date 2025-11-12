@@ -40,9 +40,50 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1, repeticiones
     float: ganancia total
     """
 
+    # 1) Preparar datos
+    if isinstance(MES_TRAIN, list):
+        df_train = df[df['foto_mes'].isin(MES_TRAIN)]
+    else:
+        df_train = df[df['foto_mes'] == MES_TRAIN]
+        
+    df_val = df[df['foto_mes'] == MES_VAL]
+
+
+    logger.info(
+        f"Tamaño original de train: {len(df_train)}. "
+        f"Rango train: {min(MES_TRAIN) if isinstance(MES_TRAIN, list) else MES_TRAIN} - "
+        f"{max(MES_TRAIN) if isinstance(MES_TRAIN, list) else MES_TRAIN}. "
+        f"Tamaño val: {len(df_val)}. Val: {MES_VAL}")
+
+
+    #Convierto a binaria la clase ternaria 
+    df_train = convertir_clase_ternaria_a_target_polars(df_train, baja_2_1=True) # Entreno el modelo con Baja+1 y Baja+2 == 1
+    df_val = convertir_clase_ternaria_a_target_polars(df_val, baja_2_1=False) # valido la ganancia solamente con Baja+2 == 1
+
+    #Subsampleo
+    df_train = aplicar_undersampling_clase0(df_train, undersampling, seed= SEMILLAS[0])   #VER SEMILLA.
+    n_train = len(df_train)
+
+
+    df_train['clase_ternaria'] = df_train['clase_ternaria'].astype(np.int8)
+    df_val['clase_ternaria'] = df_val['clase_ternaria'].astype(np.int8)
+
+    X_train = df_train.drop(columns = ['clase_ternaria'])
+    y_train = df_train['clase_ternaria']
+    lgb_train = lgb.Dataset(X_train, label=y_train)
+
+    X_val = df_val.drop(columns = ['clase_ternaria'])
+    y_val = df_val['clase_ternaria']
+    lgb_val = lgb.Dataset(X_val, label=y_val, reference=lgb_train)
+
+
+    # 2) Definición de búsqueda de hiperparámetros
+
     learning_rate = trial.suggest_float('learning_rate', PARAMETROS_LGBM['learning_rate'][0],PARAMETROS_LGBM['learning_rate'][1],log=True) 
+    
     num_leaves_exp = trial.suggest_float('num_leaves_exp', np.log2(PARAMETROS_LGBM['num_leaves'][0]), np.log2(PARAMETROS_LGBM['num_leaves'][1]))
     num_leaves = int(round(2 ** num_leaves_exp))
+    
     max_depth = trial.suggest_int('max_depth', PARAMETROS_LGBM['max_depth'][0],PARAMETROS_LGBM['max_depth'][1])
     
     # RESTRICCIÓN: num_leaves debe ser <= 2^max_depth  Si no se cumple, pruning
@@ -55,8 +96,8 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1, repeticiones
                                                 np.log2(PARAMETROS_LGBM['min_child_samples'][1]))
     min_child_samples = int(round(2 ** min_child_samples_exp))
     
-    n_train = len(df[df['foto_mes'].isin(MES_TRAIN) if isinstance(MES_TRAIN, list) else df['foto_mes'] == MES_TRAIN])
-    if min_child_samples * num_leaves > n_train:
+    
+    if min_child_samples * num_leaves > n_train_used:
         logger.warning(f"Trial {trial.number} PRUNED: min_child_samples*num_leaves ({min_child_samples * num_leaves}) > n_train ({n_train})")
         raise optuna.exceptions.TrialPruned()
 
@@ -81,7 +122,8 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1, repeticiones
                 f"num_leaves={num_leaves}, max_depth={max_depth}, min_child_samples={min_child_samples}, "
                 f"subsample={subsample:.3f}, colsample_bytree={colsample_bytree:.3f}, "
                 f"num_boost_round={num_boost_round}")
-    
+
+
     # Hiperparámetros
     params = {
         'verbosity': -1,
@@ -97,45 +139,9 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1, repeticiones
         'colsample_bytree': colsample_bytree,
         'min_split_gain': min_split_gain,
         }
-    
-    # Preparar datos de entrenamiento (TRAIN + VALIDACION)
-    if isinstance(MES_TRAIN, list):
-        df_train = df[df['foto_mes'].isin(MES_TRAIN)]
-    else:
-        df_train = df[df['foto_mes'] == MES_TRAIN]
-    df_val = df[df['foto_mes'] == MES_VAL]
 
-    
-    logger.info(
-        f"Tamaño train: {len(df_train)}. "
-        f"Rango train: {min(MES_TRAIN) if isinstance(MES_TRAIN, list) else MES_TRAIN} - "
-        f"{max(MES_TRAIN) if isinstance(MES_TRAIN, list) else MES_TRAIN}. "
-        f"Tamaño val: {len(df_val)}. Val: {MES_VAL}")
-
-
-    #Convierto a binaria la clase ternaria 
-    df_train = convertir_clase_ternaria_a_target_polars(df_train, baja_2_1=True) # Entreno el modelo con Baja+1 y Baja+2 == 1
-    df_val = convertir_clase_ternaria_a_target_polars(df_val, baja_2_1=False) # valido la ganancia solamente con Baja+2 == 1
-
-    #Subsampleo
-    df_train = aplicar_undersampling_clase0(df_train, undersampling, seed= SEMILLAS[0])   #VER SEMILLA.
-
-    df_train['clase_ternaria'] = df_train['clase_ternaria'].astype(np.int8)
-    df_val['clase_ternaria'] = df_val['clase_ternaria'].astype(np.int8)
-
-    X_train = df_train.drop(columns = ['clase_ternaria'])
-    y_train = df_train['clase_ternaria']
-    lgb_train = lgb.Dataset(X_train, label=y_train)
-
-    X_val = df_val.drop(columns = ['clase_ternaria'])
-    y_val = df_val['clase_ternaria']
-    lgb_val = lgb.Dataset(X_val, label=y_val, reference=lgb_train)
-
-    #Guardo las dimensines del dataset para poder reescalar parámetros
-    n_train_used = len(df_train)
-    params['n_train_used'] = n_train_used
-    trial.set_user_attr('n_train_used', n_train_used)
-
+    params['n_train_used'] = n_train
+    trial.set_user_attr('n_train_used', n_train)
     
     logger.info(f"Trial {trial.number} - Configuración semillerio: {repeticiones} repeticiones x {ksemillerio} semillas = {repeticiones * ksemillerio} modelos totales")
 
@@ -189,6 +195,8 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1, repeticiones
     ganancia_sd = np.std(lista_ganancias_repeticion)
 
     logger.info(f"FIN DEL TRIAL {trial.number} - Promedio de ganancias meseta: {ganancia_total_promedio:,.0f} ± {ganancia_sd:,.0f}")
+
+
 
     # Guardar información del trial
     num_boost_round_original = int(round(2 ** trial.params['num_boost_round_exp']))
@@ -388,6 +396,7 @@ def evaluar_en_test_semillerio(df: pd.DataFrame,
     # Crear carpeta para bases de datos si no existe
     path_db = os.path.join(BUCKET_NAME, "modelos_modelos")
     os.makedirs(path_db, exist_ok=True)
+    study_name = STUDY_NAME
 
     # Loop sobre repeticiones
     for repe in range(repeticiones):
@@ -401,7 +410,7 @@ def evaluar_en_test_semillerio(df: pd.DataFrame,
         for semilla in semillas_ronda:
             mejores_params['random_state'] = semilla
 
-            arch_modelo = os.path.join(path_db, f"mod_{semilla}.txt")
+            arch_modelo = os.path.join(path_db, f"mod_{study_name}_{semilla}.txt")
             
             model = lgb.train(mejores_params, train_data, num_boost_round=num_boost_round)
             model.save_model(arch_modelo)
