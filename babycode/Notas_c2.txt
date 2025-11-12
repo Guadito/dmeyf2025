@@ -10,9 +10,6 @@
 tiempo: 
 
 Seguir trabajando en HP: 
-1) agregar más semillas para ver distintas combinaciones de datos
-2) agregar más iteraciones para ver qué pasa
 3) agregar más árboles, liberar profundidad. 
-4) recordar recalcular los HP para el entrenamiento final.
 5) podría subir rangos más bajos o liberar todos los rangos para ver qué pasa.
 

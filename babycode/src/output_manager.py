@@ -32,9 +32,21 @@ def guardar_iteracion(trial, ganancia_maxima, archivo_base=None):
 
     
     # Datos de esta iteración
+
+    params_completos = {
+    **trial.params,
+    'objective': 'binary',
+    'metric': 'None',
+    'verbosity': -1,
+    'verbose': -1,
+    'max_bin': PARAMETROS_LGBM['max_bin']
+    }
+    
+    
     iteracion_data = {
         'trial_number': trial.number,
-        'params': trial.params,
+        'params': params_completos,
+        'num_boost_round': trial.user_attrs.get('num_boost_round'),
         'num_boost_round_original': trial.user_attrs.get('num_boost_round_original'),
         'best_iteration': trial.user_attrs.get('best_iteration', None), 
         'value': float(ganancia_maxima),
@@ -101,7 +113,7 @@ def guardar_resultados_test(resultados_test:dict, archivo_base=None):
     with open(archivo, 'w') as f:
         json.dump(datos_existentes, f, indent=2)
   
-    logger.info(f"Resultados guardados en {archivo} - Ganancia: {resultados_test['ganancia_test']:,.0f}")
+    logger.info(f"Resultados guardados en {archivo} - Ganancia: {resultados_test['ganancia_test_promedio']:,.0f}")
 
 
 #-----------------------------> Guardar predicciones finales

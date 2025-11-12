@@ -77,10 +77,10 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1, repeticiones
     num_boost_round = int(round(2 ** num_boost_round_exp))
 
 
-    logger.info(f"Trial {trial.number} - Hiperparámetros: lr={learning_rate:.6f}, "
-                f"leaves={num_leaves}, depth={max_depth}, min_child={min_child_samples}, "
-                f"subsample={subsample:.3f}, colsample={colsample_bytree:.3f}, "
-                f"rounds={num_boost_round}")
+    logger.info(f"Trial {trial.number} - Hiperparámetros: learning_rate={learning_rate:.6f}, "
+                f"num_leaves={num_leaves}, max_depth={max_depth}, min_child_samples={min_child_samples}, "
+                f"subsample={subsample:.3f}, colsample_bytree={colsample_bytree:.3f}, "
+                f"num_boost_round={num_boost_round}")
     
     # Hiperparámetros
     params = {
@@ -321,10 +321,11 @@ def optimizar(df: pd.DataFrame, n_trials: int, study_name: str = None,
     # Ejecutar optimización
     if trials_a_ejecutar > 0:
         study.optimize(lambda trial: objetivo_ganancia_semillerio(trial, df, undersampling=undersampling, repeticiones=repeticiones, ksemillerio=ksemillerio ), n_trials=trials_a_ejecutar)
-        logger.info(f"Mejor ganancia: {study.best_value:,.0f}")
-        logger.info(f"Mejores parámetros: {study.best_params}")
     else:
         logger.info(f"Ya se completaron {n_trials} trials")
+
+    logger.info(f"Mejor ganancia: {study.best_value:,.0f}")
+    logger.info(f"Mejores parámetros: {study.best_params}")
   
     return study   
 
@@ -353,7 +354,7 @@ def evaluar_en_test_semillerio(df: pd.DataFrame,
     logger.info(f"INICIANDO EVALUACIÓN EN TEST")
     
     # Preparar datos
-    df_train = df[df['foto_mes'].isin(MES_TRAIN)] if isinstance(MES_TRAIN, list) else df[df['foto_mes'] == MES_TRAIN]
+    df_train = df[df['foto_mes'].isin(MES_TRAIN2)] if isinstance(MES_TRAIN2, list) else df[df['foto_mes'] == MES_TRAIN2]
     df_test = df[df['foto_mes'] == MES_TEST]
 
     df_train = convertir_clase_ternaria_a_target_polars(df_train, baja_2_1=True)
@@ -647,8 +648,7 @@ def objetivo_ganancia(trial, df) -> float:
     num_leaves = int(round(2 ** num_leaves_exp))
     max_depth = trial.suggest_int('max_depth', PARAMETROS_LGBM['max_depth'][0],PARAMETROS_LGBM['max_depth'][1])
     
-    # RESTRICCIÓN IMPORTANTE: num_leaves debe ser <= 2^max_depth
-    # Si no se cumple, pruning
+    # RESTRICCIÓN IMPORTANTE: num_leaves debe ser <= 2^max_depth. Si no se cumple, pruning
     if num_leaves > 2 ** max_depth:
         raise optuna.exceptions.TrialPruned()
     

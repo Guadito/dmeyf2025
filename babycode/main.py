@@ -65,12 +65,12 @@ def main():
     
 
       #SAMPLE
-    n_sample = 50000
-    df_f, _ = train_test_split(
-        df_f,
-        train_size=n_sample,
-        stratify=df_f['clase_ternaria'],
-        random_state=42)
+    #n_sample = 50000
+    #df_f, _ = train_test_split(
+    #    df_f,
+    #    train_size=n_sample,
+    #    stratify=df_f['clase_ternaria'],
+    #    random_state=42)
 
     #df_f = realizar_feature_engineering(df_f, lags = 3)
     #df_f = filtrar_meses(df_f, mes_inicio=202003, mes_fin=202007)
@@ -87,22 +87,22 @@ def main():
 
     # 2 - optimización de hiperparámetros
     logger.info("=== INICIANDO OPTIMIZACIÓN DE HIPERPARAMETROS ===")
-    study = optimizar(df_f, n_trials= 15, undersampling = 0.05, repeticiones = 3, ksemillerio = 5)  
+    study = optimizar(df_f, n_trials= 30, undersampling = 0.05, repeticiones = 1, ksemillerio = 50)  
     
     # 3 - Evaluar modelo en test
     best_params = cargar_mejores_hiperparametros_completo(n_top = 1)
     cortes = [9000, 9500, 10000, 10500, 12000, 12500, 13000, 16000, 18000]
-    resultados_test, y_pred_binary, y_test, y_pred_promedio_total = evaluar_en_test_semillerio(df_f, best_params, cortes, repeticiones = 10, ksemillerio = 10)
+    resultados_test, y_pred_binary, y_test, y_pred_promedio_total = evaluar_en_test_semillerio(df_f, best_params, cortes, repeticiones = 1, ksemillerio = 100)
 
     # Resumen de evaluación en test
-    logger.info("=== RESUMEN DE EVALUACIÓN EN TEST ===")
-    logger.info(f"Ganancia en test: {resultados_test['ganancia_test']:,.0f}")
-    logger.info(f"Predicciones positivas: {resultados_test['predicciones_positivas']:,} ({resultados_test['porcentaje_positivas']:.2f}%)")
+    #logger.info("=== RESUMEN DE EVALUACIÓN EN TEST ===")
+    #logger.info(f"Ganancia en test: {resultados_test['ganancia_test']:,.0f}")
+    #logger.info(f"Predicciones positivas: {resultados_test['predicciones_positivas']:,} ({resultados_test['porcentaje_positivas']:.2f}%)")
 
     # Grafico de test
-    logger.info("=== GRAFICO DE TEST ===")
-    ruta_grafico_avanzado = crear_grafico_ganancia_avanzado(y_true=y_test, y_pred_proba=y_pred_prob)
-    logger.info(f"Gráficos generados: {ruta_grafico_avanzado}")
+    #logger.info("=== GRAFICO DE TEST ===")
+    #ruta_grafico_avanzado = crear_grafico_ganancia_avanzado(y_true=y_test, y_pred_proba=y_pred_prob)
+    #logger.info(f"Gráficos generados: {ruta_grafico_avanzado}")
 
     generar_predicciones_finales(y_pred_binary)
 

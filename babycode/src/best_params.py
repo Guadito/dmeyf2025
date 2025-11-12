@@ -75,7 +75,6 @@ def cargar_mejores_hiperparametros_completo(archivo_base: str = None, n_top: int
     Convierte los parámetros optimizados en log-space a sus valores reales.
     Incluye num_boost_round promedio y original si existen.
     """
-    
     if archivo_base is None:
         archivo_base = STUDY_NAME
     
@@ -92,11 +91,14 @@ def cargar_mejores_hiperparametros_completo(archivo_base: str = None, n_top: int
         # Ordenar por valor de ganancia
         iteraciones_ordenadas = sorted(iteraciones, key=lambda x: x['value'], reverse=True)
         top_trials = iteraciones_ordenadas[:n_top]
-
         top_params_list = []
-
+        
         for i, t in enumerate(top_trials, start=1):
             params = t['params'].copy()
+            
+            # Mostrar parámetros originales
+            logger.info(f"=== Trial {i} - Parámetros ORIGINALES ===")
+            logger.info(f"{json.dumps(params, indent=2)}")
             
             # Reconversión de parámetros log-space a valores normales
             if 'num_leaves_exp' in params:
@@ -106,16 +108,17 @@ def cargar_mejores_hiperparametros_completo(archivo_base: str = None, n_top: int
             if 'num_boost_round_exp' in params:
                 params['num_boost_round_original'] = int(round(2 ** params.pop('num_boost_round_exp')))
             
-            # Agregar num_boost_round promedio si existe
             if 'num_boost_round' in t:
                 params['num_boost_round'] = t['num_boost_round']
             
+            # Mostrar parámetros reconvertidos
+            logger.info(f"=== Trial {i} - Parámetros RECONVERTIDOS ===")
+            logger.info(f"{json.dumps(params, indent=2)}")
+            
             top_params_list.append(params)
-
             logger.info(f"Top {i}: trial {t.get('trial_number', 'N/A')}, ganancia {t['value']:,.0f}")
         
         logger.info(f"Archivo cargado: {archivo} con top {n_top} mejores trials")
-
         if n_top == 1:
             return top_params_list[0]
         else:
@@ -127,6 +130,7 @@ def cargar_mejores_hiperparametros_completo(archivo_base: str = None, n_top: int
     except Exception as e:
         logger.error(f"Error al cargar mejores hiperparámetros: {e}")
         raise
+
 
 
 # -------------------------------> estadísticas optuna
