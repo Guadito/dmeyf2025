@@ -368,6 +368,7 @@ def evaluar_en_test_semillerio(df: pd.DataFrame,
 
     X_test = df_test.drop(columns=['clase_ternaria'])
     y_test = df_test['clase_ternaria']
+    clientes_test = df_test['numero_de_cliente'].values
 
     # Copiar parámetros y ajustar min_child_samples
     mejores_params = mejores_params.copy()
@@ -434,6 +435,13 @@ def evaluar_en_test_semillerio(df: pd.DataFrame,
     y_pred_binary = np.zeros_like(y_pred_promedio_total, dtype=int)
     y_pred_binary[indices_top] = 1
 
+    # Crear DataFrame final de predicciones
+    resultados_df = pd.DataFrame({
+        'numero_de_cliente': df_test['numero_de_cliente'].values,
+        'Predicted': y_pred_binary
+    })
+    
+
     # Calcular métricas
     total_predicciones = len(y_pred_binary)
     predicciones_positivas = np.sum(y_pred_binary == 1)
@@ -470,8 +478,9 @@ def evaluar_en_test_semillerio(df: pd.DataFrame,
     }
 
     guardar_resultados_test(resultados_test)
+    
 
-    return resultados_test, y_pred_binary, y_test, y_pred_promedio_total
+    return resultados_test, resultados_df, y_pred_binary, y_test, y_pred_promedio_total
 
 
 

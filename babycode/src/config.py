@@ -24,6 +24,7 @@ try:
     BUCKET_NAME = _cfgGeneral.get("BUCKET_NAME", None)
     SEMILLAS = _cfg.get("SEMILLAS", [42])
     MES_TRAIN = _cfg.get("MES_TRAIN",[])
+    MES_TRAIN2 = _cfg.get("MES_TRAIN2",[])
     MES_VAL = _cfg.get("MES_VAL", [])
     MES_TEST = _cfg.get("MES_TEST",[])
     GANANCIA_ACIERTO = _cfg.get("GANANCIA_ACIERTO", None)

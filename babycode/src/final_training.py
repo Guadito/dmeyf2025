@@ -211,13 +211,14 @@ def generar_predicciones_finales_por_umbral(
         logger.error(f"Error al generar predicciones finales: {e}", exc_info=True)
         raise
 
+
 #---------------------------------> generar predicciones por cantidad de envíos
 
 def generar_predicciones_por_cantidad(
     modelos: list,
     X_predict: pd.DataFrame,
     clientes_predict: np.ndarray,
-    cantidades: list[int],  # <--- CAMBIO 1: Ahora es una lista de enteros
+    cantidades: list[int],  
     nombre_base: str = None) -> dict:
     """
     Genera predicciones finales seleccionando un NÚMERO FIJO de clientes

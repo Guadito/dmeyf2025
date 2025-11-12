@@ -13,3 +13,6 @@ Seguir trabajando en HP:
 3) agregar más árboles, liberar profundidad. 
 5) podría subir rangos más bajos o liberar todos los rangos para ver qué pasa.
 
+
+
+

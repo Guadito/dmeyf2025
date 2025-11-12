@@ -92,7 +92,7 @@ def main():
     # 3 - Evaluar modelo en test
     best_params = cargar_mejores_hiperparametros_completo(n_top = 1)
     cortes = [9000, 9500, 10000, 10500, 12000, 12500, 13000, 16000, 18000]
-    resultados_test, y_pred_binary, y_test, y_pred_promedio_total = evaluar_en_test_semillerio(df_f, best_params, cortes, repeticiones = 1, ksemillerio = 100)
+    resultados_test, resultados_df, y_pred_binary, y_test, y_pred_promedio_total = evaluar_en_test_semillerio(df_f, best_params, cortes, repeticiones = 1, ksemillerio = 100)
 
     # Resumen de evaluación en test
     #logger.info("=== RESUMEN DE EVALUACIÓN EN TEST ===")
@@ -104,7 +104,7 @@ def main():
     #ruta_grafico_avanzado = crear_grafico_ganancia_avanzado(y_true=y_test, y_pred_proba=y_pred_prob)
     #logger.info(f"Gráficos generados: {ruta_grafico_avanzado}")
 
-    generar_predicciones_finales(y_pred_binary)
+    guardar_predicciones_finales(resultados_df)
 
 
 
