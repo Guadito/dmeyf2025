@@ -319,7 +319,7 @@ def aplicar_undersampling_clase0(
         INNER JOIN ids_to_keep USING ({id_col})
     """).df()
    
-    logger.info(f"🧮 Undersampling aplicado: {undersampling:.2%} (semilla={seed})")
+    logger.info(f"Undersampling clase 0: {undersampling:.2%} (semilla={seed})")
     
     return result
 
@@ -452,7 +452,7 @@ def zero_replace(df, group_cols='foto_mes'):
         n_cols = len(cols_a_reemplazar)
         if n_cols > 0:
             logger.info(f'Mes {mes}: {n_cols} columna(s) con todos ceros -> reemplazando por NaN')
-            # Reemplazamos directamente en el DataFrame original
+
             mask = df[group_cols] == mes
             df.loc[mask, cols_a_reemplazar] = np.nan
         else:

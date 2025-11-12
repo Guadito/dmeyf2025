@@ -39,7 +39,7 @@ def guardar_iteracion(trial, ganancia_maxima, archivo_base=None):
     'metric': 'None',
     'verbosity': -1,
     'verbose': -1,
-    'max_bin': PARAMETROS_LGBM['max_bin']
+    'max_bin': 31
     }
     
     

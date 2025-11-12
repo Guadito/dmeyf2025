@@ -88,7 +88,7 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1, repeticiones
         'verbose': -1, 
         'metric': 'None',
         'objective': 'binary',
-        'max_bin': PARAMETROS_LGBM['max_bin'], 
+        'max_bin': 31, 
         'learning_rate': learning_rate,
         'num_leaves': num_leaves,
         'max_depth': max_depth,
