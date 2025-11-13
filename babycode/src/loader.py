@@ -1,6 +1,6 @@
 import logging
 import pandas as pd
-import porlar as pl
+import polars as pl
 import os
 import datetime
 import sys
@@ -13,19 +13,43 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
-def cargar_datos(path: str) -> pl.DataFrame | None:  #Se le pide que retorne un DataFrame o None 
-    '''
-    Carga un CSV desde 'path' y retorna un DataFrame.
-    '''
+import polars as pl
+import pandas as pd
+import logging
 
+logger = logging.getLogger(__name__)
+
+def cargar_datos(path: str) -> pl.DataFrame | None:
+    '''
+    Carga un CSV desde 'path' y retorna un Polars DataFrame.
+    Si falla la lectura directa con Polars, reintenta con Pandas y convierte a Polars.
+    '''
     logger.info(f"Cargando dataset desde {path}")
+
     try:
-        df = pl.read_csv(path)
-        logger.info(f"Dataset cargado con {df.shape[0]} filas y {df.shape[1]} columnas") 
+        df = pl.read_csv(path, infer_schema_length=10000)
+        logger.info(f"Dataset cargado con Polars: {df.height} filas y {df.width} columnas")
         return df
+
     except Exception as e:
-        logger.error(f"Error al cargar el dataset: {e}")
-        raise 
+        logger.warning(f"Fallo lectura directa con Polars: {e}")
+        logger.info("Reintentando lectura con Pandas...")
+
+        try:
+            # Segundo intento: Pandas (más tolerante con tipos mixtos)
+            df_pd = pd.read_csv(path, low_memory=False)
+            logger.info(f"Dataset cargado con Pandas: {df_pd.shape[0]} filas y {df_pd.shape[1]} columnas")
+
+            # Conversión a Polars
+            df_pl = pl.from_pandas(df_pd)
+            logger.info(f"Convertido a Polars: {df_pl.height} filas y {df_pl.width} columnas")
+
+            return df_pl
+
+        except Exception as e2:
+            logger.error(f"Error al cargar el dataset con Pandas: {e2}")
+            raise
+
 
 
 #----------------------> creación de clase ternaria a partir de la identificación de los períodos
@@ -89,7 +113,7 @@ def crear_clase_ternaria(df: pl.DataFrame) -> pd.DataFrame:
         FROM clases
         GROUP BY clase_ternaria, foto_mes
         ORDER BY clase_ternaria, foto_mes
-    """).df()
+    """).pl()
 
     pivot_df = resumen_clase_mes.pivot(index='clase_ternaria', columns='foto_mes', values='cantidad_clientes').fill_null(0)
     print(pivot_df)
@@ -191,24 +215,26 @@ def convertir_clase_ternaria_a_target(df: pd.DataFrame, baja_2_1=True) -> pd.Dat
 
 # ---------------- > 
 
-def convertir_clase_ternaria_a_target_polars(df: pd.DataFrame, baja_2_1: bool = True) -> pd.DataFrame:
+def convertir_clase_ternaria_a_target_polars(df: pl.DataFrame, baja_2_1: bool = True) -> pl.DataFrame:
     """Conversión binaria optimizada de clase_ternaria (segura y eficiente)."""
     
-    if df._is_copy is not None:
-        df = df.copy(deep=True)
-    
-    clases = df["clase_ternaria"].to_numpy(copy=False)
-    
     # Conteos originales
-    n_continua = np.sum(clases == "CONTINUA")
-    n_baja1 = np.sum(clases == "BAJA+1")
-    n_baja2 = np.sum(clases == "BAJA+2")
+    conteos = df.group_by("clase_ternaria").agg(pl.count().alias("count"))
+    conteos_dict = {row["clase_ternaria"]: row["count"] for row in conteos.iter_rows(named=True)}
+    
+    n_continua = conteos_dict.get("CONTINUA", 0)
+    n_baja1 = conteos_dict.get("BAJA+1", 0)
+    n_baja2 = conteos_dict.get("BAJA+2", 0)
     
     # Conversión directa
     if baja_2_1:
-        df["clase_ternaria"] = (clases != "CONTINUA").astype("int8", copy=False)
+        df = df.with_columns(
+            (pl.col("clase_ternaria") != "CONTINUA").cast(pl.Int8).alias("clase_ternaria")
+        )
     else:
-        df["clase_ternaria"] = (clases == "BAJA+2").astype("int8", copy=False)
+        df = df.with_columns(
+            (pl.col("clase_ternaria") == "BAJA+2").cast(pl.Int8).alias("clase_ternaria")
+        )
     
     # Conteos finales
     n_unos = int(df["clase_ternaria"].sum())
@@ -220,4 +246,3 @@ def convertir_clase_ternaria_a_target_polars(df: pd.DataFrame, baja_2_1: bool = 
     logger.info(f"  Distribución: {n_unos / len(df) * 100:.2f}% casos positivos")
     
     return df
-

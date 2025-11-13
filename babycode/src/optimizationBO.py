@@ -26,7 +26,6 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1, repeticiones
     trial: trial de optuna
     df: dataframe con datos
 
-  
     Description:
     Función objetivo que maximiza ganancia 
     Utiliza configuración YAML para períodos y semilla.
@@ -42,13 +41,13 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1, repeticiones
 
     # 1) Preparar datos
     if isinstance(MES_TRAIN, list):
-        df_train = df[df['foto_mes'].isin(MES_TRAIN)]
+        df_train = df.filter(pl.col('foto_mes').is_in(MES_TRAIN))
     else:
-        df_train = df[df['foto_mes'] == MES_TRAIN]
-        
-    df_val = df[df['foto_mes'] == MES_VAL]
+        df_train = df.filter(pl.col('foto_mes') == MES_TRAIN)
+    
+    df_val = df.filter(pl.col('foto_mes') == MES_VAL)
 
-
+    
     logger.info(
         f"Tamaño original de train: {len(df_train)}. "
         f"Rango train: {min(MES_TRAIN) if isinstance(MES_TRAIN, list) else MES_TRAIN} - "
@@ -59,63 +58,46 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1, repeticiones
     #Convierto a binaria la clase ternaria 
     df_train = convertir_clase_ternaria_a_target_polars(df_train, baja_2_1=True) # Entreno el modelo con Baja+1 y Baja+2 == 1
     df_val = convertir_clase_ternaria_a_target_polars(df_val, baja_2_1=False) # valido la ganancia solamente con Baja+2 == 1
+    
 
     #Subsampleo
     df_train = aplicar_undersampling_clase0(df_train, undersampling, seed= SEMILLAS[0])   #VER SEMILLA.
     n_train = len(df_train)
 
-
-    df_train['clase_ternaria'] = df_train['clase_ternaria'].astype(np.int8)
-    df_val['clase_ternaria'] = df_val['clase_ternaria'].astype(np.int8)
-
-    X_train = df_train.drop(columns = ['clase_ternaria'])
-    y_train = df_train['clase_ternaria']
+    # Separar features y target
+    X_train = df_train.drop('clase_ternaria')
+    y_train = df_train['clase_ternaria'].to_numpy()
+    
     lgb_train = lgb.Dataset(X_train, label=y_train)
-
-    X_val = df_val.drop(columns = ['clase_ternaria'])
-    y_val = df_val['clase_ternaria']
+    
+    X_val = df_val.drop('clase_ternaria')
+    y_val = df_val['clase_ternaria'].to_numpy()
+    
     lgb_val = lgb.Dataset(X_val, label=y_val, reference=lgb_train)
 
 
     # 2) Definición de búsqueda de hiperparámetros
 
-    learning_rate = trial.suggest_float('learning_rate', PARAMETROS_LGBM['learning_rate'][0],PARAMETROS_LGBM['learning_rate'][1],log=True) 
-    
-    num_leaves_exp = trial.suggest_float('num_leaves_exp', np.log2(PARAMETROS_LGBM['num_leaves'][0]), np.log2(PARAMETROS_LGBM['num_leaves'][1]))
-    num_leaves = int(round(2 ** num_leaves_exp))
-    
+    learning_rate = trial.suggest_float('learning_rate', PARAMETROS_LGBM['learning_rate'][0], PARAMETROS_LGBM['learning_rate'][1], log=True) 
+    num_leaves = trial.suggest_int('num_leaves_exp',PARAMETROS_LGBM['num_leaves'][0], PARAMETROS_LGBM['num_leaves'][1], log=True)
     max_depth = trial.suggest_int('max_depth', PARAMETROS_LGBM['max_depth'][0],PARAMETROS_LGBM['max_depth'][1])
+    num_boost_round = trial.suggest_int('num_boost_round_exp',PARAMETROS_LGBM['num_boost_round'][0], PARAMETROS_LGBM['num_boost_round'][1], log=True)
+    subsample = trial.suggest_float('subsample', PARAMETROS_LGBM['subsample'][0], PARAMETROS_LGBM['subsample'][1])   
+    colsample_bytree = trial.suggest_float('colsample_bytree',PARAMETROS_LGBM['colsample_bytree'][0],PARAMETROS_LGBM['colsample_bytree'][1])
+    min_split_gain = trial.suggest_float('min_split_gain',PARAMETROS_LGBM['min_split_gain'][0],PARAMETROS_LGBM['min_split_gain'][1])
+    min_child_samples = trial.suggest_int('min_child_samples_exp',PARAMETROS_LGBM['min_child_samples'][0],PARAMETROS_LGBM['min_child_samples'][1], log = True)
     
     # RESTRICCIÓN: num_leaves debe ser <= 2^max_depth  Si no se cumple, pruning
     if num_leaves > 2 ** max_depth:
         logger.warning(f"Trial {trial.number} PRUNED: num_leaves ({num_leaves}) > 2^max_depth ({2**max_depth})")
         raise optuna.exceptions.TrialPruned()
     
-    min_child_samples_exp = trial.suggest_float('min_child_samples_exp',
-                                                np.log2(PARAMETROS_LGBM['min_child_samples'][0]), 
-                                                np.log2(PARAMETROS_LGBM['min_child_samples'][1]))
-    min_child_samples = int(round(2 ** min_child_samples_exp))
     
-    
-    if min_child_samples * num_leaves > n_train_used:
+      
+    if min_child_samples * num_leaves > n_train:
         logger.warning(f"Trial {trial.number} PRUNED: min_child_samples*num_leaves ({min_child_samples * num_leaves}) > n_train ({n_train})")
         raise optuna.exceptions.TrialPruned()
 
-    subsample = trial.suggest_float('subsample', PARAMETROS_LGBM['subsample'][0], 
-                                    PARAMETROS_LGBM['subsample'][1])   
-    
-    colsample_bytree = trial.suggest_float('colsample_bytree', 
-                                           PARAMETROS_LGBM['colsample_bytree'][0], 
-                                           PARAMETROS_LGBM['colsample_bytree'][1])
-
-    min_split_gain = trial.suggest_float('min_split_gain', 
-                                         PARAMETROS_LGBM['min_split_gain'][0], 
-                                         PARAMETROS_LGBM['min_split_gain'][1])
-
-    num_boost_round_exp = trial.suggest_float('num_boost_round_exp',
-                                              np.log2(PARAMETROS_LGBM['num_boost_round'][0]),
-                                              np.log2(PARAMETROS_LGBM['num_boost_round'][1]))
-    num_boost_round = int(round(2 ** num_boost_round_exp))
 
 
     logger.info(f"Trial {trial.number} - Hiperparámetros: learning_rate={learning_rate:.6f}, "
@@ -164,8 +146,7 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1, repeticiones
         lista_best_iters_ronda = []
 
         logger.info(f"Trial {trial.number} - Repetición {repe+1}/{repeticiones} - Semillas en esta ronda: {semillas_ronda.tolist()}")
-
-
+    
         for i, semilla in enumerate(semillas_ronda, start=1):    
             params['random_state'] = semilla
 
@@ -196,20 +177,8 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1, repeticiones
 
     logger.info(f"FIN DEL TRIAL {trial.number} - Promedio de ganancias meseta: {ganancia_total_promedio:,.0f} ± {ganancia_sd:,.0f}")
 
-
-
-    # Guardar información del trial
-    num_boost_round_original = int(round(2 ** trial.params['num_boost_round_exp']))
-    trial.set_user_attr('num_boost_round_original', num_boost_round_original)
-
     best_iter_promedio = int(np.mean(lista_best_iters_total))
-    trial.set_user_attr('num_boost_round', int(best_iter_promedio))
-
-    num_leaves = int(round(2 ** num_leaves_exp))
-    trial.set_user_attr('num_leaves', num_leaves)
-
-    min_child_samples = int(round(2 ** trial.params['min_child_samples_exp']))
-    trial.set_user_attr('min_child_samples', min_child_samples)
+    trial.set_user_attr('num_boost_round', (best_iter_promedio))
 
     trial.set_user_attr('value', ganancia_total_promedio)
     trial.set_user_attr('state', "COMPLETE")
@@ -369,6 +338,7 @@ def evaluar_en_test_semillerio(df: pd.DataFrame,
     df_test = convertir_clase_ternaria_a_target_polars(df_test, baja_2_1=False)
 
     df_train = aplicar_undersampling_clase0(df_train, undersampling, seed=SEMILLAS[0])
+    
 
     X_train = df_train.drop(columns=['clase_ternaria'])
     y_train = df_train['clase_ternaria']
@@ -377,6 +347,7 @@ def evaluar_en_test_semillerio(df: pd.DataFrame,
     X_test = df_test.drop(columns=['clase_ternaria'])
     y_test = df_test['clase_ternaria']
     clientes_test = df_test['numero_de_cliente'].values
+
 
     # Copiar parámetros y ajustar min_child_samples
     mejores_params = mejores_params.copy()

@@ -62,8 +62,7 @@ def main():
     
     # 1- cargar datos 
     df_f = cargar_datos(DATA_PATH_BASE_VM)
-    df_f = crear_clase_ternaria(df_f)
-    
+    df_f = crear_clase_ternaria(df_f)    
 
       #SAMPLE
     #n_sample = 50000
@@ -73,12 +72,13 @@ def main():
     #    stratify=df_f['clase_ternaria'],
     #    random_state=42)
 
-    #df_f = realizar_feature_engineering(df_f, lags = 3)
+
     #df_f = filtrar_meses(df_f, mes_inicio=202003, mes_fin=202007)
-    df_f = zero_replace(df_f)
     
-    col = ['mprestamos_personales', 'cprestamos_personales']
-    df_f = neutral_columns (df_f, col)
+    cols_to_drop = ['mprestamos_personales', 'cprestamos_personales','tmobile_app','cmobile_app_trx']
+    df_f = drop_columns(df_f, cols_to_drop)
+    
+    df_f = zero_replace(df_f)
     
     col_montos = select_col_montos(df_f)
     df_f = feature_engineering_rank_pos_batch(df_f, col_montos)
@@ -87,10 +87,14 @@ def main():
     df_f = feature_engineering_lag_delta_polars(df_f, col, cant_lag = 2)
     df_f = feature_engineering_rolling_mean(df_f, col, ventana = 3)
 
-
+    cols_to_drop = ['periodo0']
+    df_f = drop_columns(df_f, cols_to_drop)
+    
     # 2 - optimización de hiperparámetros
     logger.info("=== INICIANDO OPTIMIZACIÓN DE HIPERPARAMETROS ===")
-    study = optimizar(df_f, n_trials= 30, undersampling = 0.05, repeticiones = 1, ksemillerio = 50)  
+    study = optimizar(df_f, n_trials= 30, undersampling = 0.05, repeticiones = 1, ksemillerio = 10)  
+
+
     
     # 3 - Evaluar modelo en test
     best_params = cargar_mejores_hiperparametros_completo(n_top = 1)

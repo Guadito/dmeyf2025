@@ -65,8 +65,10 @@ def select_col_montos(df: pl.DataFrame) -> list[str]:
 def feature_engineering_rank_pos_batch(df: pl.DataFrame, columnas: list[str]) -> pl.DataFrame:
     """
     Genera rankings normalizados por signo para las columnas especificadas,
-    procesando los datos por 'foto_mes' usando DuckDB.
+    procesando los datos por 'foto_mes' y columna para reducir el uso de memoria.
     """
+    import duckdb
+    import polars as pl
     
     if not columnas:
         raise ValueError("La lista de columnas no puede estar vacía")
@@ -77,6 +79,9 @@ def feature_engineering_rank_pos_batch(df: pl.DataFrame, columnas: list[str]) ->
     
     logger.info(f"Generando ranking por batch: {len(columnas_validas)} columnas válidas.")
     
+    # Convertir Polars a Pandas para DuckDB
+    df_pandas = df.to_pandas()
+    
     con = duckdb.connect(database=":memory:")
     con.execute("SET threads=1;")
     con.execute("SET preserve_insertion_order=false;")
@@ -84,49 +89,40 @@ def feature_engineering_rank_pos_batch(df: pl.DataFrame, columnas: list[str]) ->
     
     df_result = []
     
-    for mes in sorted(df["foto_mes"].unique().to_list()):
-        logger.info(f"Procesando foto_mes={mes} con {df.filter(pl.col('foto_mes') == mes).height} filas...")
+    for mes in sorted(df_pandas["foto_mes"].unique()):
+        df_mes = df_pandas[df_pandas["foto_mes"] == mes].copy()
+        logger.info(f"Procesando foto_mes={mes} con {len(df_mes)} filas...")
         
-        # Filtrar el mes en Polars
-        df_mes = df.filter(pl.col("foto_mes") == mes)
-        
-        # Registrar en DuckDB
         con.register("df_temp", df_mes)
         
-        # Construir SQL para todas las columnas de una vez
-        select_parts = ["foto_mes"]
-        
-        # Agregar columnas que no se rankean
-        cols_no_rankear = [c for c in df_mes.columns if c not in columnas_validas and c != "foto_mes"]
-        select_parts.extend(cols_no_rankear)
-        
-        # Agregar columnas rankeadas
         for col in columnas_validas:
-            rank_expr = f"""
-            CASE
-                WHEN {col} = 0 THEN 0.0
-                ELSE PERCENT_RANK() OVER (
-                    PARTITION BY SIGN({col})
-                    ORDER BY {col}
-                )
-            END AS {col}
+            sql = f"""
+            SELECT
+                {col},
+                CASE
+                    WHEN {col} = 0 THEN 0.0
+                    ELSE PERCENT_RANK() OVER (
+                        PARTITION BY SIGN({col})
+                        ORDER BY {col}
+                    )
+                END AS rank_col
+            FROM df_temp
             """
-            select_parts.append(rank_expr)
-        
-        sql = f"SELECT {', '.join(select_parts)} FROM df_temp"
-        
-        # Ejecutar y convertir a Polars
-        df_mes_ranked = con.execute(sql).pl()
+            df_rank = con.execute(sql).df()
+            df_mes[col] = df_rank["rank_col"]
         
         con.unregister("df_temp")
-        df_result.append(df_mes_ranked)
+        df_result.append(df_mes)
     
     con.close()
     
-    # Concatenar en Polars
-    resultado = pl.concat(df_result)
+    resultado_pandas = pd.concat(df_result, ignore_index=True)
     
-    logger.info(f"Feature engineering completado. Shape final: {resultado.shape}")
+    # Convertir de vuelta a Polars
+    resultado = pl.from_pandas(resultado_pandas)
+    
+    logger.info(f"Feature engineering completado por batch y columna. Shape final: {resultado.shape}")
+    
     return resultado
 
 
@@ -265,19 +261,20 @@ def asignar_pesos(df: pd.DataFrame) -> pd.DataFrame:
 # ---------------------> unsersampling para clase 0
 
 def aplicar_undersampling_clase0(
-    df: pd.DataFrame,
+    df: pl.DataFrame,
     undersampling: float,
     id_col: str = 'numero_de_cliente',
     target_col: str = 'clase_ternaria',
     seed: int = 42
-) -> pd.DataFrame:
+) -> pl.DataFrame:
     """
-        Aplica undersampling a los clientes que tienen clase 0 en todos los períodos del dataset.
-        Mantiene el 100% de los clientes que alguna vez tuvieron '1' y submuestrea el pool de clientes que nunca tuvieron '1' al número
-        especificado en 'undersampling'.
-        Parameters
+    Aplica undersampling a los clientes que tienen clase 0 en todos los períodos del dataset.
+    Mantiene el 100% de los clientes que alguna vez tuvieron '1' y submuestrea el pool de clientes
+    que nunca tuvieron '1' al número especificado en 'undersampling'.
+
+    Parameters
     ----------
-    df : pd.DataFrame
+    df : pl.DataFrame
     undersampling : float
         Proporción de clientes never_1 a conservar (ej: 0.2 = 20%)
     id_col : str, optional
@@ -286,75 +283,54 @@ def aplicar_undersampling_clase0(
         Nombre de la columna target (ej. 'clase_ternaria').
     seed : int, optional
         Semilla para el muestreo reproducible.
+
     Returns
     -------
-    pd.DataFrame
+    pl.DataFrame
         DataFrame subsampleado.
     """
-    duckdb.execute(f"SELECT setseed({seed / 1000000.0})")
 
-    # Primero calculamos cuántos IDs "never_1" hay
-    n_never_1 = duckdb.sql(f"""
-        SELECT COUNT(DISTINCT {id_col}) as n
-        FROM df
-        WHERE {id_col} NOT IN (
-            SELECT DISTINCT {id_col}
-            FROM df
-            WHERE {target_col} = 1
-        )
-    """).fetchone()[0]
-   
-    # Determinamos el sample size
+    # IDs que alguna vez tuvieron clase 1
+    ids_ever_1 = (
+        df.filter(pl.col(target_col) == 1)
+          .select(id_col)
+          .unique()
+    )
+
+    # IDs que nunca tuvieron clase 1
+    ids_never_1 = (
+        df.select(id_col)
+          .unique()
+          .join(ids_ever_1, on=id_col, how="anti")
+    )
+
+    n_never_1 = ids_never_1.height
     sample_size = int(n_never_1 * undersampling)
-   
-    # Si sample_size es 0, solo devolver los que tienen clase 1
-    if sample_size == 0:
-        result = duckdb.sql(f"""
-            SELECT df.*
-            FROM df
-            WHERE {id_col} IN (
-                SELECT DISTINCT {id_col}
-                FROM df
-                WHERE {target_col} = 1
-            )
-        """).df()
-        return result
-   
-    result = duckdb.sql(f"""
-        WITH
-        ids_ever_1 AS (
-            SELECT DISTINCT {id_col}
-            FROM df
-            WHERE {target_col} = 1
-        ),
-        ids_never_1 AS (
-            SELECT DISTINCT {id_col}
-            FROM df
-            WHERE {id_col} NOT IN (SELECT {id_col} FROM ids_ever_1)
-        ),
-        ids_never_1_sampled AS (
-            SELECT {id_col}
-            FROM (
-                SELECT {id_col}, random() as rnd
-                FROM ids_never_1
-            )
-            ORDER BY rnd
-            LIMIT {sample_size}
-        ),
-        ids_to_keep AS (
-            SELECT {id_col} FROM ids_ever_1
-            UNION ALL
-            SELECT {id_col} FROM ids_never_1_sampled
-        )
-        SELECT df.*
-        FROM df
-        INNER JOIN ids_to_keep USING ({id_col})
-    """).df()
-   
-    logger.info(f"Undersampling clase 0: {undersampling:.2%} (semilla={seed})")
-    
-    return result
 
+    # Si sample_size es 0, devolver solo los que tienen clase 1
+    if sample_size == 0:
+        result = df.join(ids_ever_1, on=id_col, how="inner")
+        logger.info(f"Undersampling clase 0: {undersampling:.2%} (semilla={seed}) — solo clientes con clase 1")
+        return result
+
+    np.random.seed(seed)
+    sampled_ids = np.random.choice(
+        ids_never_1[id_col].to_list(),
+        size=sample_size,
+        replace=False)
+
+    ids_never_1_sampled = pl.DataFrame({id_col: sampled_ids})
+
+    # Combinar ids a conservar
+    ids_to_keep = pl.concat([ids_ever_1, ids_never_1_sampled])
+
+    # Filtrar el dataset original
+    result = df.join(ids_to_keep, on=id_col, how="inner")
+
+    logger.info(f"Undersampling clase 0: {undersampling:.2%} (semilla={seed}) "
+                f"— {sample_size} de {n_never_1} clientes 'never_1' conservados")
+
+    return result
 
 
 #--------------->
@@ -389,11 +365,19 @@ def feature_engineering_lag_delta_polars(
     if 'numero_de_cliente' not in df.columns or 'foto_mes' not in df.columns:
         raise ValueError("Columnas requeridas no encontradas")
     
-    columnas_excluidas = ['clase_ternaria', 
-                          'numero_de_cliente', 'foto_mes', 'periodo0']
+    columnas_excluidas = ['clase_ternaria', 'numero_de_cliente', 'foto_mes', 'periodo0']
     
-    columnas_validas = [col for col in columnas 
-                       if col in df.columns and col not in columnas_excluidas]
+    # Filtrar solo columnas numéricas
+    tipos_numericos = [pl.Int8, pl.Int16, pl.Int32, pl.Int64, 
+                       pl.UInt8, pl.UInt16, pl.UInt32, pl.UInt64,
+                       pl.Float32, pl.Float64]
+    
+    columnas_validas = [
+        col for col in columnas 
+        if col in df.columns 
+        and col not in columnas_excluidas
+        and df.schema[col] in tipos_numericos
+    ]
     
     if len(columnas_validas) < len(columnas):
         excluidas = set(columnas) - set(columnas_validas)
@@ -431,12 +415,6 @@ def feature_engineering_lag_delta_polars(
     
     # Aplicar transformaciones
     df_pl = df_pl.with_columns(expresiones)
-
-    # Eliminar periodo0 si fue creado
-    if drop_periodo0:
-        df_pl = df_pl.drop("periodo0")
-    
-
     logger.info("Ejecutando query")
     df_result = df_pl.collect()
     
@@ -509,11 +487,14 @@ def feature_engineering_rolling_mean(df: pl.DataFrame, columnas_validas: list[st
 
 
 # -------------------------------> reemplazo de ceros
-
 def zero_replace(df: pl.DataFrame, group_col: str = "foto_mes") -> pl.DataFrame:
     """Reemplaza con NAN aquellas columnas que tienen 0 en todos sus valores"""
     
-    cols = [c for c in df.columns if c != group_col]
+    # Filtrar solo columnas numéricas y excluir group_col
+    cols = [
+        c for c in df.columns 
+        if c != group_col and df[c].dtype.is_numeric()
+    ]
     
     exprs = [
         pl.when((pl.col(c) == 0).all().over(group_col) & (pl.col(c) == 0))
