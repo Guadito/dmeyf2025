@@ -34,3 +34,9 @@ competencias_2_gcp_11
 
 
 11) 
+BASELINE:
+2 lags y delta
+undersampling 0.05 en bayesiana
+elimino cols_to_drop = ['mprestamos_personales', 'cprestamos_personales','tmobile_app','cmobile_app_trx']
+
+

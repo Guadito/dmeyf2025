@@ -442,7 +442,7 @@ def evaluar_en_test_semillerio(df: pl.DataFrame,
 
     resultados_df_fijo = pd.DataFrame({
         'numero_de_cliente': clientes_test,
-        'Predicted': y_pred_binary_fijo
+        'Predict': y_pred_binary_fijo
     })
 
     
@@ -453,7 +453,7 @@ def evaluar_en_test_semillerio(df: pl.DataFrame,
 
     resultados_df = pd.DataFrame({
         'numero_de_cliente': clientes_test,
-        'Predicted': y_pred_binary_mejor
+        'Predict': y_pred_binary_mejor
     })
     
     y_test_np = y_test.to_numpy()  # <-- si aún no lo convertiste

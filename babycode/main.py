@@ -65,12 +65,12 @@ def main():
     df_f = crear_clase_ternaria(df_f)    
 
     #SAMPLE
-    n_sample = 50000
-    df_f, _ = train_test_split(
-        df_f,
-        train_size=n_sample,
-        stratify=df_f['clase_ternaria'],
-        random_state=42)
+    #n_sample = 50000
+    #df_f, _ = train_test_split(
+    #    df_f,
+    #    train_size=n_sample,
+    #    stratify=df_f['clase_ternaria'],
+    #    random_state=42)
 
 
     #df_f = filtrar_meses(df_f, mes_inicio=202003, mes_fin=202007)
@@ -92,7 +92,7 @@ def main():
     
     # 2 - optimización de hiperparámetros
     logger.info("=== INICIANDO OPTIMIZACIÓN DE HIPERPARAMETROS ===")
-    study = optimizar(df_f, n_trials= 5, undersampling = 0.05, repeticiones = 1, ksemillerio = 7)  
+    study = optimizar(df_f, n_trials= 30, undersampling = 0.05, repeticiones = 1, ksemillerio = 7)  
 
     # 3 - Evaluar modelo en test
     best_params = cargar_mejores_hiperparametros_completo(n_top = 1)
