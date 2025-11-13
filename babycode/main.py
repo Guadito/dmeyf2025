@@ -64,7 +64,7 @@ def main():
     df_f = cargar_datos(DATA_PATH_BASE_VM)
     df_f = crear_clase_ternaria(df_f)    
 
-      #SAMPLE
+    #SAMPLE
     #n_sample = 50000
     #df_f, _ = train_test_split(
     #    df_f,
@@ -94,12 +94,10 @@ def main():
     logger.info("=== INICIANDO OPTIMIZACIÓN DE HIPERPARAMETROS ===")
     study = optimizar(df_f, n_trials= 30, undersampling = 0.05, repeticiones = 1, ksemillerio = 10)  
 
-
-    
     # 3 - Evaluar modelo en test
     best_params = cargar_mejores_hiperparametros_completo(n_top = 1)
     cortes = [9000, 9500, 10000, 10500, 12000, 12500, 13000, 16000, 18000]
-    resultados_test, resultados_df, y_pred_binary, y_test, y_pred_promedio_total = evaluar_en_test_semillerio(df_f, best_params, cortes, repeticiones = 1, ksemillerio = 100)
+    resultados_test, resultados_df_fijo, resultados_df, y_pred_binary, y_test, y_pred_promedio_total = evaluar_en_test_semillerio(df_f, best_params, cortes, repeticiones = 1, ksemillerio = 100)
 
     # Resumen de evaluación en test
     #logger.info("=== RESUMEN DE EVALUACIÓN EN TEST ===")
@@ -111,6 +109,7 @@ def main():
     #ruta_grafico_avanzado = crear_grafico_ganancia_avanzado(y_true=y_test, y_pred_proba=y_pred_prob)
     #logger.info(f"Gráficos generados: {ruta_grafico_avanzado}")
 
+    guardar_predicciones_finales(resultados_df_fijo)
     guardar_predicciones_finales(resultados_df)
 
 

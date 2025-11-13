@@ -60,6 +60,87 @@ def select_col_montos(df: pl.DataFrame) -> list[str]:
     excluded = {"numero_de_cliente", "foto_mes"}
     return [col for col in selected if col not in excluded]
 
+#-----------------------------------------------------> Rank negativo batch
+
+def feature_engineering_rank_neg_batch(df: pl.DataFrame, columnas: list[str]) -> pl.DataFrame:
+    """
+    Genera rankings normalizados por signo [-1.0, 1.0] para las columnas 
+    especificadas, procesando los datos por 'foto_mes' con DuckDB.
+    """
+    
+    if not columnas:
+        raise ValueError("La lista de columnas no puede estar vacía")
+    
+    columnas_validas = [col for col in columnas if col in df.columns]
+    if not columnas_validas:
+        raise ValueError("No hay columnas válidas para rankear")
+    
+    logger.info(f"Generando ranking por batch: {len(columnas_validas)} columnas válidas.")
+    
+
+    try:
+        df_pandas = df.to_pandas()
+    except Exception as e:
+        # logger.error(f"Error al convertir a Pandas. {e}")
+        # Si falla por memoria, es mejor usar df.iter_slices()
+        raise
+        
+    con = duckdb.connect(database=":memory:")
+    con.execute("SET threads=1;")
+    con.execute("SET preserve_insertion_order=false;")
+    con.execute("SET memory_limit='2GB';")
+    
+    df_result = []
+    
+    for mes in sorted(df_pandas["foto_mes"].unique()):
+        df_mes = df_pandas[df_pandas["foto_mes"] == mes].copy()
+        
+        con.register("df_temp", df_mes)
+        
+        for col in columnas_validas:
+            
+            # --- INICIO DE LA MODIFICACIÓN ---
+            # Esta consulta SQL ahora genera la escala [-1, 1]
+            sql = f"""
+            SELECT
+                {col},
+                CASE
+                    WHEN {col} = 0 THEN 0.0
+                    
+                    WHEN SIGN({col}) = 1 THEN -- Positivos: Rango [0.0, 1.0]
+                        PERCENT_RANK() OVER (
+                            PARTITION BY SIGN({col})
+                            ORDER BY {col} ASC
+                        )
+                        
+                    WHEN SIGN({col}) = -1 THEN -- Negativos: Rango [-1.0, 0.0]
+                        (PERCENT_RANK() OVER (
+                            PARTITION BY SIGN({col})
+                            ORDER BY {col} ASC
+                        )) - 1.0
+                        
+                END AS rank_col
+            FROM df_temp
+            """
+            
+            df_rank = con.execute(sql).df()
+            # Se sobrescribe la columna original en el df del mes
+            df_mes[col] = df_rank["rank_col"] 
+        
+        con.unregister("df_temp")
+        df_result.append(df_mes)
+    
+    con.close()
+    
+    resultado_pandas = pd.concat(df_result, ignore_index=True)
+    
+    # Convertir de vuelta a Polars
+    resultado = pl.from_pandas(resultado_pandas)
+    
+    logger.info(f"Feature engineering completado. Shape final: {resultado.shape}")
+    
+    return resultado
+
 #-----------------------------------------------------> Rank positivo batch
 
 def feature_engineering_rank_pos_batch(df: pl.DataFrame, columnas: list[str]) -> pl.DataFrame:
@@ -560,56 +641,54 @@ def drop_columns(df: pl.DataFrame, columnas: list[str]) -> pl.DataFrame:
 
 # -------------> reg_slope
 
-def feature_engineering_reg(df, columnas: list[str]) -> pl.DataFrame:
+def feature_engineering_reg(df: pl.DataFrame, columnas: list[str], ventana: int = 3) -> pl.DataFrame:
     """
-    Genera reg_slope para los atributos especificados utilizando SQL.
+    Calcula la pendiente (regr_slope) para los atributos especificados
+    en una ventana móvil definida, utilizando DuckDB.
 
-    Parameters:
-    -----------
-    df : pd.DataFrame
-        DataFrame con los datos
-    columnas : list
-        Lista de atributos para los cuales generar tendencias. Si es None, no se generan tendencias.
+    Parameters
+    ----------
+    df : pl.DataFrame
+        DataFrame con los datos originales.
+    columnas : list[str]
+        Lista de columnas sobre las cuales calcular la pendiente.
+    ventana : int, default=6
+        Tamaño de la ventana (en períodos consecutivos, ej. meses).
 
-    Returns:
-    --------
+    Returns
+    -------
     pl.DataFrame
-        DataFrame con las variables de tendencia agregadas
+        DataFrame con las columnas de tendencia agregadas.
     """
 
-    logger.info(f"Realizando feature engineering de tendencia para {len(columnas) if columnas else 0} atributos")
-
-    if columnas is None or len(columnas) == 0:
-        logger.warning("No se especificaron atributos para generar lags")
+    if not columnas:
+        logger.warning("No se especificaron columnas para generar tendencias.")
         return df
 
-    # Construir la consulta SQL
-    sql = "SELECT *"
+    logger.info(f"Calculando regr_slope para {len(columnas)} columnas, con ventana de {ventana} períodos.")
 
-    # Agregar los lags para los atributos especificados
-    for attr in columnas:
-        if attr in df.columns:
-            sql += f", regr_slope({attr}, cliente_antiguedad) over ventana as {attr}_trend_6m"
-        else:
-            logger.warning(f"El atributo {attr} no existe en el DataFrame")
-
-    # Completar la consulta
-    sql += " FROM df"
-    sql += " window ventana as (partition by numero_de_cliente order by foto_mes rows between 6 preceding and current row)"
-    sql += " ORDER BY numero_de_cliente, foto_mes"
-
-    # Ejecutar la consulta SQL
     con = duckdb.connect(database=":memory:")
-    con.register("df", df)
-    df = con.execute(sql).pl()
+    con.register("df", df.to_arrow())
+
+    # Crear SQL dinámico para todas las columnas
+    sql_parts = ["SELECT numero_de_cliente, foto_mes"]
+    for col in columnas:
+        if col in df.columns:
+            sql_parts.append(
+                f", regr_slope({col}, cliente_antiguedad) OVER ventana AS {col}_trend_{ventana}m"
+            )
+        else:
+            logger.warning(f"Columna {col} no encontrada en DataFrame y será omitida.")
+
+    sql = " ".join(sql_parts)
+    sql += f" FROM df WINDOW ventana AS (PARTITION BY numero_de_cliente ORDER BY foto_mes ROWS BETWEEN {ventana} PRECEDING AND CURRENT ROW)"
+
+    logger.info("Ejecutando consulta SQL en DuckDB...")
+    df_result = pl.from_arrow(con.execute(sql).arrow())
+
     con.close()
+    gc.collect()
 
+    logger.info(f"Tendencias generadas: {df_result.height:,} filas × {df_result.width:,} columnas")
 
-    df_result = df_pl.collect().to_pandas()
-    
-    logging.info(df.head())
-
-    logger.info(f"Feature engineering [trends] completado")
-    logger.info(df.shape)
-
-    return df
+    return df_result

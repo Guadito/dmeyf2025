@@ -25,5 +25,16 @@ Seguir trabajando en HP:
     predicción en 202106
     315.999 en kaggle
 
-9) Idem anterior. meses final  "competencias_2_gcp_8"
+"competencias_2_gcp_8" ABORTADO 
+
+9) 2 lags y delta
+    undersampling 0.05
+    rank pos
+    Sumo medias móviles x3
+    [semillerio 100 semillas. 1 repeticion.] 
+    cols_to_drop = ['mprestamos_personales', 'cprestamos_personales','tmobile_app','cmobile_app_trx']
+    columnas zeros as nan
+    meses final   "competencias_2_gcp_7"  
+    predicción en 202106
+    315.999 en kaggle
     

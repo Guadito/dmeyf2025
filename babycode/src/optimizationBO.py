@@ -410,10 +410,25 @@ def evaluar_en_test_semillerio(df: pd.DataFrame,
     mejor_corte_cantidad = cortes[mejor_corte_index]
     mejor_ganancia_promedio = ganancias_promedio_por_corte[mejor_corte_index]
 
-    # Generar predicciones binarias finales usando mejor corte
-    indices_top = np.argsort(y_pred_promedio_total)[-mejor_corte_cantidad:]
-    y_pred_binary = np.zeros_like(y_pred_promedio_total, dtype=int)
-    y_pred_binary[indices_top] = 1
+        
+    # ===== Corte 1: fijo en 11.000 =====
+    corte_fijo = 11000
+    indices_top_fijo = np.argsort(y_pred_promedio_total)[-corte_fijo:]
+    y_pred_binary_fijo = np.zeros_like(y_pred_promedio_total, dtype=int)
+    y_pred_binary_fijo[indices_top_fijo] = 1
+
+    # Crear DataFrame final de predicciones
+    resultados_df_fijo = pd.DataFrame({
+        'numero_de_cliente': df_test['numero_de_cliente'].values,
+        'Predicted': y_pred_binary
+    })
+
+    
+    # ===== Corte 2: mejor punto encontrado =====
+    indices_top_mejor = np.argsort(y_pred_promedio_total)[-mejor_corte_cantidad:]
+    y_pred_binary_mejor = np.zeros_like(y_pred_promedio_total, dtype=int)
+    y_pred_binary_mejor[indices_top_mejor] = 1
+
 
     # Crear DataFrame final de predicciones
     resultados_df = pd.DataFrame({
@@ -460,8 +475,7 @@ def evaluar_en_test_semillerio(df: pd.DataFrame,
     guardar_resultados_test(resultados_test)
     
 
-    return resultados_test, resultados_df, y_pred_binary, y_test, y_pred_promedio_total
-
+    return resultados_test, resultados_df_fijo, resultados_df, y_pred_binary, y_test, y_pred_promedio_total
 
 
 #-----------------------------------------------> evalua el modelo en test
