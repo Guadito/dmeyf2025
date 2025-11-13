@@ -67,36 +67,45 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1, repeticiones
     # Separar features y target
     X_train = df_train.drop('clase_ternaria')
     y_train = df_train['clase_ternaria'].to_numpy()
-    
     lgb_train = lgb.Dataset(X_train, label=y_train)
     
     X_val = df_val.drop('clase_ternaria')
     y_val = df_val['clase_ternaria'].to_numpy()
-    
     lgb_val = lgb.Dataset(X_val, label=y_val, reference=lgb_train)
+
 
 
     # 2) Definición de búsqueda de hiperparámetros
 
-    learning_rate = trial.suggest_float('learning_rate', PARAMETROS_LGBM['learning_rate'][0], PARAMETROS_LGBM['learning_rate'][1], log=True) 
-    num_leaves = trial.suggest_int('num_leaves_exp',PARAMETROS_LGBM['num_leaves'][0], PARAMETROS_LGBM['num_leaves'][1], log=True)
-    max_depth = trial.suggest_int('max_depth', PARAMETROS_LGBM['max_depth'][0],PARAMETROS_LGBM['max_depth'][1])
-    num_boost_round = trial.suggest_int('num_boost_round_exp',PARAMETROS_LGBM['num_boost_round'][0], PARAMETROS_LGBM['num_boost_round'][1], log=True)
+    max_depth = PARAMETROS_LGBM['max_depth'] 
+    max_bin = PARAMETROS_LGBM['max_bin']
     subsample = trial.suggest_float('subsample', PARAMETROS_LGBM['subsample'][0], PARAMETROS_LGBM['subsample'][1])   
     colsample_bytree = trial.suggest_float('colsample_bytree',PARAMETROS_LGBM['colsample_bytree'][0],PARAMETROS_LGBM['colsample_bytree'][1])
-    min_split_gain = trial.suggest_float('min_split_gain',PARAMETROS_LGBM['min_split_gain'][0],PARAMETROS_LGBM['min_split_gain'][1])
-    min_child_samples = trial.suggest_int('min_child_samples_exp',PARAMETROS_LGBM['min_child_samples'][0],PARAMETROS_LGBM['min_child_samples'][1], log = True)
-    
-    # RESTRICCIÓN: num_leaves debe ser <= 2^max_depth  Si no se cumple, pruning
-    if num_leaves > 2 ** max_depth:
-        logger.warning(f"Trial {trial.number} PRUNED: num_leaves ({num_leaves}) > 2^max_depth ({2**max_depth})")
-        raise optuna.exceptions.TrialPruned()
-    
-    
-      
+    min_split_gain = trial.suggest_float('min_split_gain', PARAMETROS_LGBM['min_split_gain'][0], PARAMETROS_LGBM['min_split_gain'][1])
+
+    learning_rate_exp = trial.suggest_float('learning_rate_exp', PARAMETROS_LGBM['learning_rate'][0], PARAMETROS_LGBM['learning_rate'][1])
+    learning_rate = 2 ** learning_rate_exp
+
+    num_leaves_exp = trial.suggest_float('num_leaves_exp',PARAMETROS_LGBM['num_leaves'][0],PARAMETROS_LGBM['num_leaves'][1])
+    num_leaves = int(round(2 ** num_leaves_exp))
+
+
+    rango_mcs = PARAMETROS_LGBM['min_child_samples']
+    min_exp_mcs = rango_mcs[0]
+    if rango_mcs[1] == "log2(N/2)":
+        max_exp_mcs = np.log2(n_train / 2)
+    else:
+        max_exp_mcs = float(rango_mcs[1])
+
+    min_child_samples_exp = trial.suggest_float('min_child_samples_exp',min_exp_mcs,max_exp_mcs)
+    min_child_samples = int(round(2 ** min_child_samples_exp))
+
+    num_boost_round_exp = trial.suggest_float('num_boost_round_exp',PARAMETROS_LGBM['num_boost_round'][0],PARAMETROS_LGBM['num_boost_round'][1])
+    num_boost_round = int(round(2 ** num_boost_round_exp))
+
     if min_child_samples * num_leaves > n_train:
-        logger.warning(f"Trial {trial.number} PRUNED: min_child_samples*num_leaves ({min_child_samples * num_leaves}) > n_train ({n_train})")
-        raise optuna.exceptions.TrialPruned()
+            logger.warning(f"Trial {trial.number} PRUNED: min_child_samples*num_leaves ({min_child_samples * num_leaves}) > n_train ({n_train})")
+            raise optuna.exceptions.TrialPruned()
 
 
 
@@ -112,7 +121,7 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1, repeticiones
         'verbose': -1, 
         'metric': 'None',
         'objective': 'binary',
-        'max_bin': 31, 
+        'max_bin': max_bin, 
         'learning_rate': learning_rate,
         'num_leaves': num_leaves,
         'max_depth': max_depth,
@@ -177,8 +186,13 @@ def objetivo_ganancia_semillerio(trial, df, undersampling: int = 1, repeticiones
 
     logger.info(f"FIN DEL TRIAL {trial.number} - Promedio de ganancias meseta: {ganancia_total_promedio:,.0f} ± {ganancia_sd:,.0f}")
 
+    # ------------------- LOG de best_iterations del trial -------------------
+    logger.info(f"Lista de best_iteration para este trial: {lista_best_iters_total}")
+    
     best_iter_promedio = int(np.mean(lista_best_iters_total))
-    trial.set_user_attr('num_boost_round', (best_iter_promedio))
+    logger.info(f"Promedio de best_iteration para este trial: {best_iter_promedio}")
+    trial.set_user_attr('num_boost_round', best_iter_promedio)
+    # ------------------------------------------------------------------------
 
     trial.set_user_attr('value', ganancia_total_promedio)
     trial.set_user_attr('state', "COMPLETE")
@@ -308,7 +322,7 @@ def optimizar(df: pd.DataFrame, n_trials: int, study_name: str = None,
 
 # --------------- > evaluar modelo con semillerio
 
-def evaluar_en_test_semillerio(df: pd.DataFrame,
+def evaluar_en_test_semillerio(df: pl.DataFrame,
                                mejores_params: dict,
                                cortes : list,
                                undersampling: int = 1,
@@ -331,27 +345,36 @@ def evaluar_en_test_semillerio(df: pd.DataFrame,
     logger.info(f"INICIANDO EVALUACIÓN EN TEST")
     
     # Preparar datos
-    df_train = df[df['foto_mes'].isin(MES_TRAIN2)] if isinstance(MES_TRAIN2, list) else df[df['foto_mes'] == MES_TRAIN2]
-    df_test = df[df['foto_mes'] == MES_TEST]
+    if isinstance(MES_TRAIN2, list):
+        df_train = df.filter(pl.col("foto_mes").is_in(MES_TRAIN2))
+    else:
+        df_train = df.filter(pl.col("foto_mes") == MES_TRAIN2)
+    df_test = df.filter(pl.col("foto_mes") == MES_TEST)
 
     df_train = convertir_clase_ternaria_a_target_polars(df_train, baja_2_1=True)
     df_test = convertir_clase_ternaria_a_target_polars(df_test, baja_2_1=False)
 
     df_train = aplicar_undersampling_clase0(df_train, undersampling, seed=SEMILLAS[0])
+
+
+    X_train = df_train.drop("clase_ternaria")
+    y_train = df_train["clase_ternaria"]
+    X_test = df_test.drop("clase_ternaria")
+    y_test = df_test["clase_ternaria"]
+    clientes_test = df_test["numero_de_cliente"].to_numpy()
+
+    # Convertir a pandas/numpy para LightGBM
+    X_train_pd = X_train.to_pandas()
+    y_train_np = y_train.to_numpy()
+    X_test_pd = X_test.to_pandas()   # ← mantené pandas acá
+    y_test_np = y_test.to_numpy()
+
+
+    train_data = lgb.Dataset(X_train_pd, label=y_train_np)
     
-
-    X_train = df_train.drop(columns=['clase_ternaria'])
-    y_train = df_train['clase_ternaria']
-    train_data = lgb.Dataset(X_train, label=y_train)
-
-    X_test = df_test.drop(columns=['clase_ternaria'])
-    y_test = df_test['clase_ternaria']
-    clientes_test = df_test['numero_de_cliente'].values
-
-
     # Copiar parámetros y ajustar min_child_samples
     mejores_params = mejores_params.copy()
-    num_boost_round = mejores_params.pop('best_iteration', mejores_params.pop('num_boost_round', 200))
+    num_boost_round = mejores_params.pop('num_boost_round', mejores_params.pop('num_boost_round', 200))
     if 'min_child_samples' in mejores_params and 'n_train_used' in mejores_params:
         factor = len(df_train) / mejores_params['n_train_used']
         mejores_params['min_child_samples'] = int(round(mejores_params['min_child_samples'] * factor))
@@ -386,7 +409,7 @@ def evaluar_en_test_semillerio(df: pd.DataFrame,
             model = lgb.train(mejores_params, train_data, num_boost_round=num_boost_round)
             model.save_model(arch_modelo)
 
-            y_pred_acum_ronda += model.predict(X_test, num_iteration=num_boost_round)
+            y_pred_acum_ronda += model.predict(X_test_pd, num_iteration=num_boost_round)
             del model
             gc.collect()
         
@@ -417,10 +440,9 @@ def evaluar_en_test_semillerio(df: pd.DataFrame,
     y_pred_binary_fijo = np.zeros_like(y_pred_promedio_total, dtype=int)
     y_pred_binary_fijo[indices_top_fijo] = 1
 
-    # Crear DataFrame final de predicciones
     resultados_df_fijo = pd.DataFrame({
-        'numero_de_cliente': df_test['numero_de_cliente'].values,
-        'Predicted': y_pred_binary
+        'numero_de_cliente': clientes_test,
+        'Predicted': y_pred_binary_fijo
     })
 
     
@@ -429,22 +451,21 @@ def evaluar_en_test_semillerio(df: pd.DataFrame,
     y_pred_binary_mejor = np.zeros_like(y_pred_promedio_total, dtype=int)
     y_pred_binary_mejor[indices_top_mejor] = 1
 
-
-    # Crear DataFrame final de predicciones
     resultados_df = pd.DataFrame({
-        'numero_de_cliente': df_test['numero_de_cliente'].values,
-        'Predicted': y_pred_binary
+        'numero_de_cliente': clientes_test,
+        'Predicted': y_pred_binary_mejor
     })
     
-
+    y_test_np = y_test.to_numpy()  # <-- si aún no lo convertiste
+    
     # Calcular métricas
-    total_predicciones = len(y_pred_binary)
-    predicciones_positivas = np.sum(y_pred_binary == 1)
+    total_predicciones = len(y_pred_binary_mejor)
+    predicciones_positivas = np.sum(y_pred_binary_mejor == 1)
     porcentaje_positivas = predicciones_positivas / total_predicciones * 100
-    verdaderos_positivos = np.sum((y_pred_binary == 1) & (y_test == 1))
-    falsos_positivos = np.sum((y_pred_binary == 1) & (y_test == 0))
-    verdaderos_negativos = np.sum((y_pred_binary == 0) & (y_test == 0))
-    falsos_negativos = np.sum((y_pred_binary == 0) & (y_test == 1))
+    verdaderos_positivos = np.sum((y_pred_binary_mejor == 1) & (y_test_np == 1))
+    falsos_positivos = np.sum((y_pred_binary_mejor == 1) & (y_test_np == 0))
+    verdaderos_negativos = np.sum((y_pred_binary_mejor == 0) & (y_test_np == 0))
+    falsos_negativos = np.sum((y_pred_binary_mejor == 0) & (y_test_np == 1))
     precision = verdaderos_positivos / (verdaderos_positivos + falsos_positivos + 1e-10)
     recall = verdaderos_positivos / (verdaderos_positivos + falsos_negativos + 1e-10)
     accuracy = (verdaderos_positivos + verdaderos_negativos) / total_predicciones
@@ -475,7 +496,8 @@ def evaluar_en_test_semillerio(df: pd.DataFrame,
     guardar_resultados_test(resultados_test)
     
 
-    return resultados_test, resultados_df_fijo, resultados_df, y_pred_binary, y_test, y_pred_promedio_total
+    return resultados_test, resultados_df_fijo, resultados_df, y_pred_binary_mejor, y_test, y_pred_promedio_total
+
 
 
 #-----------------------------------------------> evalua el modelo en test

@@ -641,6 +641,13 @@ def drop_columns(df: pl.DataFrame, columnas: list[str]) -> pl.DataFrame:
 
 # -------------> reg_slope
 
+import duckdb
+import polars as pl
+import gc
+import logging
+
+logger = logging.getLogger(__name__)
+
 def feature_engineering_reg(df: pl.DataFrame, columnas: list[str], ventana: int = 3) -> pl.DataFrame:
     """
     Calcula la pendiente (regr_slope) para los atributos especificados
@@ -652,7 +659,7 @@ def feature_engineering_reg(df: pl.DataFrame, columnas: list[str], ventana: int 
         DataFrame con los datos originales.
     columnas : list[str]
         Lista de columnas sobre las cuales calcular la pendiente.
-    ventana : int, default=6
+    ventana : int, default=3
         Tamaño de la ventana (en períodos consecutivos, ej. meses).
 
     Returns
@@ -665,23 +672,32 @@ def feature_engineering_reg(df: pl.DataFrame, columnas: list[str], ventana: int 
         logger.warning("No se especificaron columnas para generar tendencias.")
         return df
 
+    # Crear periodo0 si no existe (año * 12 + mes)
+    if "periodo0" not in df.columns:
+        df = df.with_columns(
+            ((pl.col("foto_mes") // 100) * 12 + (pl.col("foto_mes") % 100)).alias("periodo0")
+        )
+        drop_periodo0 = True
+    else:
+        drop_periodo0 = False
+
     logger.info(f"Calculando regr_slope para {len(columnas)} columnas, con ventana de {ventana} períodos.")
 
     con = duckdb.connect(database=":memory:")
     con.register("df", df.to_arrow())
 
-    # Crear SQL dinámico para todas las columnas
+    # Construcción dinámica del SQL
     sql_parts = ["SELECT numero_de_cliente, foto_mes"]
     for col in columnas:
         if col in df.columns:
             sql_parts.append(
-                f", regr_slope({col}, cliente_antiguedad) OVER ventana AS {col}_trend_{ventana}m"
+                f", regr_slope({col}, periodo0) OVER ventana AS {col}_trend_{ventana}m"
             )
         else:
             logger.warning(f"Columna {col} no encontrada en DataFrame y será omitida.")
 
     sql = " ".join(sql_parts)
-    sql += f" FROM df WINDOW ventana AS (PARTITION BY numero_de_cliente ORDER BY foto_mes ROWS BETWEEN {ventana} PRECEDING AND CURRENT ROW)"
+    sql += f" FROM df WINDOW ventana AS (PARTITION BY numero_de_cliente ORDER BY periodo0 ROWS BETWEEN {ventana} PRECEDING AND CURRENT ROW)"
 
     logger.info("Ejecutando consulta SQL en DuckDB...")
     df_result = pl.from_arrow(con.execute(sql).arrow())
@@ -689,6 +705,13 @@ def feature_engineering_reg(df: pl.DataFrame, columnas: list[str], ventana: int 
     con.close()
     gc.collect()
 
+    # Merge de resultados
+    df_final = df.join(df_result, on=["numero_de_cliente", "foto_mes"], how="left")
+
+    # Limpieza opcional
+    if drop_periodo0:
+        df_final = df_final.drop("periodo0")
+
     logger.info(f"Tendencias generadas: {df_result.height:,} filas × {df_result.width:,} columnas")
 
-    return df_result
+    return df_final

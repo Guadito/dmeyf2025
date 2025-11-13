@@ -75,7 +75,7 @@ def preparar_datos_entrenamiento_final(df: pd.DataFrame) -> tuple:
 
 #-----------------------------------------> entrenar modelo final
 
-def entrenar_modelo_final(X_train: pd.DataFrame, y_train: pd.Series, mejores_params: dict) -> list:
+def entrenar_modelo_final_semillerio(X_train: pl.DataFrame, y_train: pd.Series, mejores_params: dict) -> list:
     """
     Entrena un modelo con diferentes semillas.
     
@@ -91,7 +91,6 @@ def entrenar_modelo_final(X_train: pd.DataFrame, y_train: pd.Series, mejores_par
     
     modelos = []
     semillas = SEMILLAS if isinstance(SEMILLAS, list) else [SEMILLAS]
-    undersampling_ratio = PARAMETROS_LGBM['undersampling']
     
     for idx, semilla in enumerate(semillas):
         logger.info(f"Entrenando modelo {idx+1}/{len(semillas)} con semilla {semilla}")
@@ -270,3 +269,66 @@ def generar_predicciones_por_cantidad(
     except Exception as e:
         logger.error(f"Error al generar predicciones finales: {e}", exc_info=True)
         raise
+
+
+# -------------------------> final 
+#-----------------------------------------> entrenar modelo final
+
+def entrenar_modelo_final(X_train: pd.DataFrame, y_train: pd.Series, mejores_params: dict) -> list:
+    """
+    Entrena un modelo con diferentes semillas.
+    
+    Args:
+        X_train: Features de entrenamiento
+        y_train: Target de entrenamiento
+        mejores_params: Mejores hiperparámetros de Optuna
+    
+    Returns:
+        list: Lista de modelos entrenados
+    """
+    logger.info("Iniciando entrenamiento de modelos finales con múltiples semillas")
+    
+    modelos = []
+    semillas = SEMILLAS if isinstance(SEMILLAS, list) else [SEMILLAS]
+    undersampling_ratio = PARAMETROS_LGBM['undersampling']
+    
+    for idx, semilla in enumerate(semillas):
+        logger.info(f"Entrenando modelo {idx+1}/{len(semillas)} con semilla {semilla}")
+        
+        # Configurar parámetros con la semilla actual
+        params = {
+            'objective': 'binary',
+            'metric': None,  
+            'random_state': semilla,
+            'verbosity': -1,
+            **mejores_params,           
+        }
+        
+
+        # Normalización si hubo undersampling en la optimización bayesiana
+        if undersampling_ratio != 1.0 and 'min_data_in_leaf' in params:
+            valor_original = params['min_data_in_leaf']
+            params['min_data_in_leaf'] = max(1, round(valor_original / undersampling_ratio))
+            logger.info(f"Ajustando min_data_in_leaf: {valor_original} -> {params['min_data_in_leaf']} (factor {undersampling_ratio})")
+        
+        # Crear dataset
+        train_data = lgb.Dataset(X_train, label=y_train)
+        
+        # Copiar los parámetros para no modificar el dict original 
+        params_copy = params.copy()
+        num_boost_round = num_boost_round = params_copy.pop('best_iteration', params_copy.pop('num_boost_round', 200))
+        
+        # Entrenar modelo
+        modelo = lgb.train(
+            params_copy,
+            train_data,
+            feval=ganancia_ordenada,
+            num_boost_round=num_boost_round
+        )
+        
+        modelos.append(modelo)
+        logger.info(f"Modelo {idx+1} entrenado exitosamente")
+    
+    logger.info(f"Total de modelos entrenados: {len(modelos)}")
+
+    return modelos

@@ -7,7 +7,6 @@
 6 - [5] + columnas zeros as nan    ganancia: 297,860,000          tiempo: 
 
 7 - [6] Recorro HP de manera logarítmica ------------ en la OB fue peor 
-tiempo: 
 
 Seguir trabajando en HP: 
 3) agregar más árboles, liberar profundidad. 
@@ -15,7 +14,7 @@ Seguir trabajando en HP:
 
 
 8)  2 lags y delta
-    undersampling 0.05
+     undersampling 0.05 en bayesiana
     rank pos
     Sumo medias móviles x3
     [semillerio 100 semillas. 1 repeticion.] 
@@ -26,15 +25,12 @@ Seguir trabajando en HP:
     315.999 en kaggle
 
 "competencias_2_gcp_8" ABORTADO 
+"competencias_2_gcp_9" ABORTADO 
+"competencias_2_gcp_10" ABORTADO 
 
-9) 2 lags y delta
-    undersampling 0.05
-    rank pos
-    Sumo medias móviles x3
-    [semillerio 100 semillas. 1 repeticion.] 
-    cols_to_drop = ['mprestamos_personales', 'cprestamos_personales','tmobile_app','cmobile_app_trx']
-    columnas zeros as nan
-    meses final   "competencias_2_gcp_7"  
-    predicción en 202106
-    315.999 en kaggle
-    
+10) idem
+rank neg
+competencias_2_gcp_11 
+
+
+11) 

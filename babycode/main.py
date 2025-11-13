@@ -65,12 +65,12 @@ def main():
     df_f = crear_clase_ternaria(df_f)    
 
     #SAMPLE
-    #n_sample = 50000
-    #df_f, _ = train_test_split(
-    #    df_f,
-    #    train_size=n_sample,
-    #    stratify=df_f['clase_ternaria'],
-    #    random_state=42)
+    n_sample = 50000
+    df_f, _ = train_test_split(
+        df_f,
+        train_size=n_sample,
+        stratify=df_f['clase_ternaria'],
+        random_state=42)
 
 
     #df_f = filtrar_meses(df_f, mes_inicio=202003, mes_fin=202007)
@@ -78,26 +78,26 @@ def main():
     cols_to_drop = ['mprestamos_personales', 'cprestamos_personales','tmobile_app','cmobile_app_trx']
     df_f = drop_columns(df_f, cols_to_drop)
     
-    df_f = zero_replace(df_f)
+    #df_f = zero_replace(df_f)
     
-    col_montos = select_col_montos(df_f)
-    df_f = feature_engineering_rank_neg_batch(df_f, col_montos)
+    #col_montos = select_col_montos(df_f)
+    #df_f = feature_engineering_rank_neg_batch(df_f, col_montos)
     
     col = [c for c in df_f.columns if c not in ['numero_de_cliente', 'foto_mes', 'clase_ternaria']]
     df_f = feature_engineering_lag_delta_polars(df_f, col, cant_lag = 2)
-    df_f = feature_engineering_rolling_mean(df_f, col, ventana = 3)
+    #df_f = feature_engineering_rolling_mean(df_f, col, ventana = 3)
 
     cols_to_drop = ['periodo0']
     df_f = drop_columns(df_f, cols_to_drop)
     
     # 2 - optimización de hiperparámetros
     logger.info("=== INICIANDO OPTIMIZACIÓN DE HIPERPARAMETROS ===")
-    study = optimizar(df_f, n_trials= 30, undersampling = 0.05, repeticiones = 1, ksemillerio = 10)  
+    study = optimizar(df_f, n_trials= 5, undersampling = 0.05, repeticiones = 1, ksemillerio = 7)  
 
     # 3 - Evaluar modelo en test
     best_params = cargar_mejores_hiperparametros_completo(n_top = 1)
     cortes = [9000, 9500, 10000, 10500, 12000, 12500, 13000, 16000, 18000]
-    resultados_test, resultados_df_fijo, resultados_df, y_pred_binary, y_test, y_pred_promedio_total = evaluar_en_test_semillerio(df_f, best_params, cortes, repeticiones = 1, ksemillerio = 100)
+    resultados_test, resultados_df_fijo, resultados_df, y_pred_binary_mejor, y_test, y_pred_promedio_total = evaluar_en_test_semillerio(df_f, best_params, cortes, repeticiones = 1, ksemillerio = 100)
 
     # Resumen de evaluación en test
     #logger.info("=== RESUMEN DE EVALUACIÓN EN TEST ===")

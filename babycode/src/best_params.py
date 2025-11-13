@@ -102,9 +102,13 @@ def cargar_mejores_hiperparametros_completo(archivo_base: str = None, n_top: int
             
             # Reconversión de parámetros log-space a valores normales
             if 'num_leaves_exp' in params:
-                params['num_leaves'] = int(round(2 ** params.pop('num_leaves_exp')))
+                num_leaves_raw = int(round(2 ** params.pop('num_leaves_exp')))
+                params['num_leaves'] = max(2, num_leaves_raw)
+
             if 'min_child_samples_exp' in params:
-                params['min_child_samples'] = int(round(2 ** params.pop('min_child_samples_exp')))
+                min_child_raw = int(round(2 ** params.pop('min_child_samples_exp')))
+                params['min_child_samples'] = max(1, min_child_raw)
+
             if 'num_boost_round_exp' in params:
                 params['num_boost_round_original'] = int(round(2 ** params.pop('num_boost_round_exp')))
             
@@ -112,7 +116,7 @@ def cargar_mejores_hiperparametros_completo(archivo_base: str = None, n_top: int
                 params['num_boost_round'] = t['num_boost_round']
             
             # Mostrar parámetros reconvertidos
-            logger.info(f"=== Trial {i} - Parámetros RECONVERTIDOS ===")
+            logger.info(f"=== Trial {i} - Parámetros CONVERTIDOS ===")
             logger.info(f"{json.dumps(params, indent=2)}")
             
             top_params_list.append(params)
@@ -130,7 +134,6 @@ def cargar_mejores_hiperparametros_completo(archivo_base: str = None, n_top: int
     except Exception as e:
         logger.error(f"Error al cargar mejores hiperparámetros: {e}")
         raise
-
 
 
 # -------------------------------> estadísticas optuna
