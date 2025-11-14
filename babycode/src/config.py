@@ -13,7 +13,8 @@ try:
     with open(PATH_CONFIG, "r") as file:
         _cfgGeneral = yaml.safe_load(file)    # <-- Lee el YAML
         _cfg = _cfgGeneral["competencia02"]   
-        PARAMETROS_LGBM = _cfgGeneral["params_lgb_2"] 
+        PARAMETROS_LGBM = _cfgGeneral["params_lgb_2"]
+        PARAMETROS_LGBM_Z = _cfgGeneral["params_lgb_z"]
 
 
     #Configuración global del proyecto

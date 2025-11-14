@@ -34,7 +34,7 @@ def create_canaritos(df: pl.DataFrame, qcanaritos: int = 50) -> pl.DataFrame:
         df (pl.DataFrame): El DataFrame de Polars al que se le añadirán
                            las columnas.
         qcanaritos (int): El número de columnas "canarito" que se
-                            desea crear (ej: 100).
+                            desea crear. Default = 50.
 
     Returns:
         pl.DataFrame: Un nuevo DataFrame con las columnas "canarito" añadidas
@@ -59,10 +59,6 @@ def create_canaritos(df: pl.DataFrame, qcanaritos: int = 50) -> pl.DataFrame:
     )
 
     return df
-
-
-
-
 
 #---------------------------> carga de datos y undersampling si aplica
 
@@ -121,14 +117,12 @@ def preparar_datos_training_lgb(
     X_val = df_val.drop('clase_ternaria')
     y_val = df_val['clase_ternaria'].to_numpy()
 
-    vc_train = df_train['clase_ternaria'].value_counts().to_dict()
-    logger.info("Distribución training:")
-    for clase, count in vc_train.items():
+   logger.info("Distribución training:")
+    for clase, count in df_train['clase_ternaria'].value_counts().iter_rows():
         logger.info(f"  Clase {clase}: {count:,} ({count/len(df_train)*100:.0f}%)")
 
-    vc_val = df_val['clase_ternaria'].value_counts().to_dict()
     logger.info("Distribución validation:")
-    for clase, count in vc_val.items():
+    for clase, count in df_val['clase_ternaria'].value_counts().iter_rows():
         logger.info(f"  Clase {clase}: {count:,} ({count/len(df_val)*100:.0f}%)")
 
     lgb_train = lgb.Dataset(X_train.to_pandas(), label=y_train)
@@ -139,9 +133,56 @@ def preparar_datos_training_lgb(
 
 
 
-# --------------- > evaluar modelo con semillerio
+# -------------------> zlightgbm
 
-def evaluar_en_test_semillerio(df: pl.DataFrame,
+def entrenar_modelo(lgb_train: lgb.Dataset, lgb_val: lgb.Dataset, mejores_params: dict) -> list:
+    """
+    Entrena un modelo con diferentes semillas.
+    
+    Args:
+        X_train: Features de entrenamiento
+        y_train: Target de entrenamiento
+        mejores_params: Mejores hiperparámetros de Optuna
+    
+    Returns:
+        list: Lista de modelos entrenados
+    """
+    logger.info("Iniciando entrenamiento de modelos finales con múltiples semillas")
+    
+    modelos = []
+    semillas = SEMILLAS if isinstance(SEMILLAS, list) else [SEMILLAS]
+    
+    for idx, semilla in enumerate(semillas):
+        logger.info(f"Entrenando modelo {idx+1}/{len(semillas)} con semilla {semilla}")
+        
+        # Configurar parámetros con la semilla actual
+        params = {
+            'objective': 'binary',
+            'metric': Custom,  
+            'random_state': semilla,
+            'verbosity': -1,
+            **mejores_params,           
+        }
+        
+
+        # Entrenar modelo
+        modelo = lgb.train(
+            params,
+            lgb_train,
+            valid_sets=[lgb_val]  #VER
+        )
+        
+        modelos.append(modelo)
+        logger.info(f"Modelo {idx+1} entrenado exitosamente")
+    
+    logger.info(f"Total de modelos entrenados: {len(modelos)}")
+
+    return modelos
+
+
+# --------------- > evaluar modelo
+
+def evaluar_en_test(df: pl.DataFrame,
                                mejores_params: dict,
                                cortes : list,
                                undersampling: int = 1,
@@ -162,89 +203,28 @@ def evaluar_en_test_semillerio(df: pl.DataFrame,
         tuple: (resultados_test, y_pred_binary, y_test, y_pred_prob_promedio)
     """
     logger.info(f"INICIANDO EVALUACIÓN EN TEST")
-    
-    # Preparar datos
-    if isinstance(MES_TRAIN2, list):
-        df_train = df.filter(pl.col("foto_mes").is_in(MES_TRAIN2))
-    else:
-        df_train = df.filter(pl.col("foto_mes") == MES_TRAIN2)
-    df_test = df.filter(pl.col("foto_mes") == MES_TEST)
-
-    df_train = convertir_clase_ternaria_a_target_polars(df_train, baja_2_1=True)
-    df_test = convertir_clase_ternaria_a_target_polars(df_test, baja_2_1=False)
-
-    df_train = aplicar_undersampling_clase0(df_train, undersampling, seed=SEMILLAS[0])
-
-
-    X_train = df_train.drop("clase_ternaria")
-    y_train = df_train["clase_ternaria"]
-    X_test = df_test.drop("clase_ternaria")
-    y_test = df_test["clase_ternaria"]
-    clientes_test = df_test["numero_de_cliente"].to_numpy()
-
-    # Convertir a pandas/numpy para LightGBM
-    X_train_pd = X_train.to_pandas()
-    y_train_np = y_train.to_numpy()
-    X_test_pd = X_test.to_pandas()   # ← mantené pandas acá
-    y_test_np = y_test.to_numpy()
-
-
-    train_data = lgb.Dataset(X_train_pd, label=y_train_np)
-    
-    # Copiar parámetros y ajustar min_child_samples
-    mejores_params = mejores_params.copy()
-    num_boost_round = mejores_params.pop('num_boost_round', mejores_params.pop('num_boost_round', 200))
-    if 'min_child_samples' in mejores_params and 'n_train_used' in mejores_params:
-        factor = len(df_train) / mejores_params['n_train_used']
-        mejores_params['min_child_samples'] = int(round(mejores_params['min_child_samples'] * factor))
-
-    # Generar semillas para ensemble
-    rng = np.random.default_rng(SEMILLAS[0])
-    semillas_totales = rng.choice(np.arange(100_000, 1_000_000), size=ksemillerio * repeticiones, replace=False)
-
-    # Matriz para almacenar ganancias por repetición y corte
-    mganancias = np.zeros((repeticiones, len(cortes)))
-    y_pred_promedio_total = np.zeros(len(X_test))  # Para acumular probabilidades promedio de todas las repeticiones
 
     # Crear carpeta para bases de datos si no existe
     path_db = os.path.join(BUCKET_NAME, "modelos_modelos")
     os.makedirs(path_db, exist_ok=True)
     study_name = STUDY_NAME
 
-    # Loop sobre repeticiones
-    for repe in range(repeticiones):
-        desde = repe * ksemillerio
-        hasta = (repe + 1) * ksemillerio
-        semillas_ronda = semillas_totales[desde:hasta]
 
-        y_pred_acum_ronda = np.zeros(len(X_test))
-        
-        # Loop sobre semillas
-        for semilla in semillas_ronda:
-            mejores_params['random_state'] = semilla
-
-            arch_modelo = os.path.join(path_db, f"mod_{study_name}_{semilla}.txt")
+    arch_modelo = os.path.join(path_db, f"mod_{study_name}_{semilla}.txt")
             
-            model = lgb.train(mejores_params, train_data, num_boost_round=num_boost_round)
-            model.save_model(arch_modelo)
+    model = lgb.train(mejores_params, train_data)
+    model.save_model(arch_modelo)
 
-            y_pred_acum_ronda += model.predict(X_test_pd, num_iteration=num_boost_round)
-            del model
-            gc.collect()
-        
-        # Probabilidad promedio de la repetición
-        y_pred_promedio_ronda = y_pred_acum_ronda / ksemillerio
-        y_pred_promedio_total += y_pred_promedio_ronda / repeticiones  # Promedio final sobre todas las repeticiones
+    y_pred = model.predict(X_test)
 
-        # Calcular ganancias por corte
-        try: 
-            ganancias_ronda = calcular_ganancias_por_corte(y_pred_promedio_ronda, y_test, cortes)
-        except Exception as e:
+    # Calcular ganancias por corte
+   try: 
+       ganancias = calcular_ganancias_por_corte(y_pred, y_test, cortes)
+   except Exception as e:
             logger.warning(f"No se pudo calcular la ganancia para esta repetición: {e}")
-            ganancias_ronda = [np.nan] * len(cortes)  # o [0]*len(cortes) si preferís
+            ganancias = [np.nan] * len(cortes)  # o [0]*len(cortes) si preferís
         
-        mganancias[repe, :] = ganancias_ronda
-        logger.info(f"Repetición {repe+1}: Ganancias por corte = {dict(zip(cortes, ganancias_ronda))}")
+    logger.info(f"Repetición {repe+1}: Ganancias por corte = {dict(zip(cortes, ganancias_ronda))}")
 
     # Determinar mejor corte promedio
     ganancias_promedio_por_corte = np.mean(mganancias, axis=0)
@@ -275,7 +255,7 @@ def evaluar_en_test_semillerio(df: pl.DataFrame,
         'Predict': y_pred_binary_mejor
     })
     
-    y_test_np = y_test.to_numpy()  # <-- si aún no lo convertiste
+    y_test_np = y_test.to_numpy() 
     
     # Calcular métricas
     total_predicciones = len(y_pred_binary_mejor)
@@ -316,110 +296,6 @@ def evaluar_en_test_semillerio(df: pl.DataFrame,
     
 
     return resultados_test, resultados_df_fijo, resultados_df, y_pred_binary_mejor, y_test, y_pred_promedio_total
-
-
-
-#-----------------------------------------------> evalua el modelo en test
-
-def evaluar_en_test (df: pd.DataFrame, mejores_params:dict) -> tuple:
-    """
-    Evalúa el modelo con los mejores hiperparámetros en el conjunto de test.
-    Solo calcula la ganancia.
-  
-    Args:
-        df: DataFrame con todos los datos
-        mejores_params: Mejores hiperparámetros encontrados por Optuna
-  
-    Returns:
-        dict: Resultados de la evaluación en test (ganancia + estadísticas básicas)
-    """
-    logger.info(f"INICIANDO EVALUACIÓN EN TEST")
-  
-    # Preparar datos de entrenamiento (TRAIN + VALIDACION)
-    if isinstance(MES_TRAIN, list):
-        periodos_entrenamiento = MES_TRAIN + [MES_VAL]
-    else:
-        periodos_entrenamiento = [MES_TRAIN, MES_VAL]
-
-    
-    logger.info(f"Períodos de entrenamiento: {periodos_entrenamiento}")
-    logger.info(f"Período de test: {MES_TEST}")
-
-    
-    df_train_completo = df[df['foto_mes'].isin(periodos_entrenamiento)]
-    df_test = df[df['foto_mes'] == MES_TEST]
-
-
-    df_train_completo = convertir_clase_ternaria_a_target_polars(df_train_completo, baja_2_1=True) # Entreno el modelo con Baja+1 y Baja+2 == 1
-    df_test = convertir_clase_ternaria_a_target_polars(df_test, baja_2_1=False) # valido la ganancia solamente con Baja+2 == 1
-
-    X_train_completo = df_train_completo.drop(columns = ['clase_ternaria'])
-    y_train_completo = df_train_completo['clase_ternaria']
-
-    X_test = df_test.drop(columns = ['clase_ternaria'])
-    y_test = df_test['clase_ternaria']
-
-    
-    train_data = lgb.Dataset(X_train_completo, label=y_train_completo)
-    test_data = lgb.Dataset(X_test, label=y_test, reference=train_data)
-
-    # Copiar los parámetros para no modificar el dict original
-    mejores_params = mejores_params.copy()
-
-    # Tomar la iteración óptima si existe
-    num_boost_round = mejores_params.pop('best_iteration', None)
-    if num_boost_round is None:
-        num_boost_round = mejores_params.pop('num_boost_round', 200)  # fallback
-
-
-    # Entrenar modelo con mejores parámetros
-    model = lgb.train(mejores_params, 
-                      train_data,
-                      num_boost_round=num_boost_round,
-                      feval=ganancia_ordenada
-                    )   
-
-
-    # Predecir probabilidades y binarizar
-    y_pred_prob = model.predict(X_test)
-    y_pred_binary = (y_pred_prob > 0.025).astype(int) 
-  
-    # Calcular solo la ganancia
-    ganancia_test = calcular_ganancia(y_test, y_pred_binary)
-  
-    # Estadísticas básicas
-    total_predicciones = len(y_pred_binary)
-    predicciones_positivas = np.sum(y_pred_binary == 1)
-    porcentaje_positivas = (predicciones_positivas / total_predicciones) * 100
-    verdaderos_positivos = np.sum((y_pred_binary == 1) & (y_test == 1))
-    falsos_positivos = np.sum((y_pred_binary == 1) & (y_test == 0))
-    verdaderos_negativos = np.sum((y_pred_binary == 0) & (y_test == 0))
-    falsos_negativos = np.sum((y_pred_binary == 0) & (y_test == 1))
-
-    precision = verdaderos_positivos / (verdaderos_positivos + falsos_positivos + 1e-10)  # para evitar división por cero
-    recall = verdaderos_positivos / (verdaderos_positivos + falsos_negativos + 1e-10)
-    accuracy = (verdaderos_positivos + verdaderos_negativos) / total_predicciones
-
-    resultados_test = {
-        'ganancia_test': float(ganancia_test),
-        'total_predicciones': int(total_predicciones),
-        'predicciones_positivas': int(predicciones_positivas),
-        'porcentaje_positivas': float(porcentaje_positivas),
-        'verdaderos_positivos': int(verdaderos_positivos),
-        'falsos_positivos': int(falsos_positivos),
-        'verdaderos_negativos': int(verdaderos_negativos),
-        'falsos_negativos': int(falsos_negativos),
-        'precision': float(precision),
-        'recall': float(recall),
-        'accuracy': float(accuracy),
-        'timestamp': datetime.datetime.now().isoformat()
-    }
-  
-    guardar_resultados_test(resultados_test)
-    graficar_importances_test(model)
-
-
-    return resultados_test, y_pred_binary, y_test, y_pred_prob
 
 
 

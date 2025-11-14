@@ -65,3 +65,9 @@ params_lgb_2:
         colsample_bytree: [0.5, 1.0]      
         max_bin: 31
         min_split_gain: [0.0, 0.1]
+
+params_lgb_z:  
+        learning_rate: [1.0]       
+        qcanaritos: [5] 
+        min_data_in_leaf: [2000]
+        gradient_bound: [0.01]

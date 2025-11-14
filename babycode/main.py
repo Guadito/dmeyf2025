@@ -9,6 +9,7 @@ from src.features import *
 from src.config import  *
 from src.loader import *
 from src.optimizationBO import *
+from src.mid_training import *
 from src.best_params import *
 from src.grafico_test import *
 from src.final_training import *
@@ -91,7 +92,9 @@ def main():
     df_f = drop_columns(df_f, cols_to_drop)
 
 
-
+    df_f = create_canaritos(df_f, 50)
+    
+    
     
     
     # 2 - optimización de hiperparámetros
