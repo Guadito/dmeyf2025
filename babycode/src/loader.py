@@ -213,7 +213,7 @@ def convertir_clase_ternaria_a_target(df: pd.DataFrame, baja_2_1=True) -> pd.Dat
 
 
 
-# ---------------- > 
+# ---------------- > clase ternaria con polars
 
 def convertir_clase_ternaria_a_target_polars(df: pl.DataFrame, baja_2_1: bool = True) -> pl.DataFrame:
     """Conversión binaria optimizada de clase_ternaria (segura y eficiente)."""
@@ -246,3 +246,115 @@ def convertir_clase_ternaria_a_target_polars(df: pl.DataFrame, baja_2_1: bool = 
     logger.info(f"  Distribución: {n_unos / len(df) * 100:.2f}% casos positivos")
     
     return df
+
+#---------------------------> carga de datos y undersampling si aplica
+
+def preparar_datos_training_lgb(
+        df: pl.DataFrame,
+        training: list | int,
+        validation: list | int,
+        undersampling_0: int = 1
+    ):
+    """
+    Prepara datos de entrenamiento y validación para LightGBM
+    de forma consistente con la función de entrenamiento final.
+
+    Args:
+        df: Polars DataFrame completo
+        training: lista o entero con períodos de training
+        validation: lista o entero con períodos de validación
+        undersampling_0: cada cuántos registros clase 0 dejar (1 = no undersampling)
+
+    Returns:
+        tuple: (lgb_train, lgb_val, X_train, y_train, X_val, y_val)
+    """
+
+    logger.info("Preparando datos para entrenamiento + validación")
+
+    if isinstance(training, list): 
+        df_train = df.filter(pl.col('foto_mes').is_in(training))
+    else:
+        df_train = df.filter(pl.col('foto_mes') == training)
+
+    if isinstance(validation, list):
+        df_val = df.filter(pl.col('foto_mes').is_in(validation))
+    else:
+        df_val = df.filter(pl.col('foto_mes') == validation)
+
+    
+    logger.info(f"Tamaño original train: {len(df_train):,} | "f"Períodos train: {training}")
+    logger.info(f"Tamaño val: {len(df_val):,} | "f"Períodos val: {validation}")
+
+
+    if df_train.is_empty():
+        raise ValueError(f"No se encontraron datos de training para períodos: {training}")
+    if df_val.is_empty():
+        raise ValueError(f"No se encontraron datos de validation para períodos: {validation}")
+
+    df_train = convertir_clase_ternaria_a_target_polars(df_train, baja_2_1=True)
+    df_val = convertir_clase_ternaria_a_target_polars(df_val, baja_2_1=False)
+
+    df_train = aplicar_undersampling_clase0(df_train, undersampling_0, seed=SEMILLAS[0])
+
+    logger.info(f"Train luego de undersampling: {len(df_train):,}")
+
+    X_train = df_train.drop('clase_ternaria')
+    y_train = df_train['clase_ternaria'].to_numpy()
+
+    X_val = df_val.drop('clase_ternaria')
+    y_val = df_val['clase_ternaria'].to_numpy()
+
+    vc_train = df_train['clase_ternaria'].value_counts().to_dict()
+    logger.info("Distribución training:")
+    for clase, count in vc_train.items():
+        logger.info(f"  Clase {clase}: {count:,} ({count/len(df_train)*100:.0f}%)")
+
+    vc_val = df_val['clase_ternaria'].value_counts().to_dict()
+    logger.info("Distribución validation:")
+    for clase, count in vc_val.items():
+        logger.info(f"  Clase {clase}: {count:,} ({count/len(df_val)*100:.0f}%)")
+
+    lgb_train = lgb.Dataset(X_train.to_pandas(), label=y_train)
+    lgb_val = lgb.Dataset(X_val.to_pandas(), label=y_val, reference=lgb_train)
+
+    return lgb_train, lgb_val, X_train, y_train, X_val, y_val
+
+
+
+def preparar_datos_training_lgb(df, training: list, validation:list, undersampling_0: int = 1) -> pl.Dataframe: 
+    """
+
+    """
+
+    if isinstance(training, list):
+        df_train = df.filter(pl.col('foto_mes').is_in(training))
+    else:
+        df_train = df.filter(pl.col('foto_mes') == training)
+    
+    df_val = df.filter(pl.col('foto_mes') == validation)
+
+    
+    logger.info(
+        f"Tamaño original de train: {len(df_train)}. "
+        f"Rango train: {min(training) if isinstance(training, list) else training} - "
+        f"{max(training) if isinstance(training, list) else training}. "
+        f"Tamaño val: {len(df_val)}. Val: {validation}")
+
+
+    #Convierto a binaria la clase ternaria 
+    df_train = convertir_clase_ternaria_a_target_polars(df_train, baja_2_1=True) # Entreno el modelo con Baja+1 y Baja+2 == 1
+    df_val = convertir_clase_ternaria_a_target_polars(df_val, baja_2_1=False) # valido la ganancia solamente con Baja+2 == 1
+    
+
+    #Subsampleo
+    df_train = aplicar_undersampling_clase0(df_train, undersampling, seed= SEMILLAS[0])   #VER SEMILLA.
+    n_train = len(df_train)
+
+    # Separar features y target
+    X_train = df_train.drop('clase_ternaria')
+    y_train = df_train['clase_ternaria'].to_numpy()
+    lgb_train = lgb.Dataset(X_train, label=y_train)
+    
+    X_val = df_val.drop('clase_ternaria')
+    y_val = df_val['clase_ternaria'].to_numpy()
+    lgb_val = lgb.Dataset(X_val, label=y_val, reference=lgb_train)

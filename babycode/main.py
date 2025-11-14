@@ -89,6 +89,10 @@ def main():
 
     cols_to_drop = ['periodo0']
     df_f = drop_columns(df_f, cols_to_drop)
+
+
+
+    
     
     # 2 - optimización de hiperparámetros
     logger.info("=== INICIANDO OPTIMIZACIÓN DE HIPERPARAMETROS ===")
