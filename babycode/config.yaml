@@ -71,3 +71,4 @@ params_lgb_z:
         qcanaritos: [5] 
         min_data_in_leaf: [2000]
         gradient_bound: [0.01]
+        metric: custom

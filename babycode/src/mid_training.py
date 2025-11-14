@@ -180,112 +180,73 @@ def entrenar_modelo(lgb_train: lgb.Dataset, lgb_val: lgb.Dataset, mejores_params
     return modelos
 
 
-# --------------- > evaluar modelo
+#----------------------------> evaluación del modelo
 
-def evaluar_en_test(df: pl.DataFrame,
-                               mejores_params: dict,
-                               cortes : list,
-                               undersampling: int = 1,
-                               repeticiones: int = 1,
-                               ksemillerio: int = 1) -> tuple:
+def evaluar_en_test(modelos: list, X_test: pd.DataFrame, y_test: pd.Series,
+                    cortes: list, corte_fijo: int = 11000) -> tuple:
     """
-    Evalúa el modelo con los mejores hiperparámetros en el conjunto de test
-    usando múltiples semillas y repeticiones (ensemble) y calcula ganancias.
+    Evalúa un ensemble de modelos en test.
     
     Args:
-        df: DataFrame con todos los datos
-        mejores_params: Mejores hiperparámetros encontrados por Optuna
-        undersampling: factor de undersampling de clase 0
-        repeticiones: número de repeticiones del ensemble
-        ksemillerio: número de semillas por repetición
+        modelos: lista de modelos LightGBM entrenados
+        X_test: features de test
+        y_test: target de test
+        cortes: lista de cortes para calcular ganancias
+        corte_fijo: corte fijo para predicción binaria
     
     Returns:
-        tuple: (resultados_test, y_pred_binary, y_test, y_pred_prob_promedio)
+        tuple: (resultados_test, resultados_df_fijo, resultados_df, y_pred_binary_mejor, y_test, y_pred_promedio)
     """
-    logger.info(f"INICIANDO EVALUACIÓN EN TEST")
+    logger.info("INICIANDO EVALUACIÓN EN TEST")
 
-    # Crear carpeta para bases de datos si no existe
-    path_db = os.path.join(BUCKET_NAME, "modelos_modelos")
-    os.makedirs(path_db, exist_ok=True)
-    study_name = STUDY_NAME
+    # Promediar predicciones de todos los modelos
+    y_preds = np.array([m.predict(X_test) for m in modelos])
+    y_pred_promedio = np.mean(y_preds, axis=0)
 
+    # Ganancias por corte
+    ganancias_por_corte = calcular_ganancias_por_corte(y_pred_promedio, y_test, cortes)
+    mejor_corte_idx = np.argmax(ganancias_por_corte)
+    mejor_corte = cortes[mejor_corte_idx]
+    mejor_ganancia = ganancias_por_corte[mejor_corte_idx]
 
-    arch_modelo = os.path.join(path_db, f"mod_{study_name}_{semilla}.txt")
-            
-    model = lgb.train(mejores_params, train_data)
-    model.save_model(arch_modelo)
-
-    y_pred = model.predict(X_test)
-
-    # Calcular ganancias por corte
-   try: 
-       ganancias = calcular_ganancias_por_corte(y_pred, y_test, cortes)
-   except Exception as e:
-            logger.warning(f"No se pudo calcular la ganancia para esta repetición: {e}")
-            ganancias = [np.nan] * len(cortes)  # o [0]*len(cortes) si preferís
-        
-    logger.info(f"Repetición {repe+1}: Ganancias por corte = {dict(zip(cortes, ganancias_ronda))}")
-
-    # Determinar mejor corte promedio
-    ganancias_promedio_por_corte = np.mean(mganancias, axis=0)
-    mejor_corte_index = np.argmax(ganancias_promedio_por_corte)
-    mejor_corte_cantidad = cortes[mejor_corte_index]
-    mejor_ganancia_promedio = ganancias_promedio_por_corte[mejor_corte_index]
-
-        
-    # ===== Corte 1: fijo en 11.000 =====
-    corte_fijo = 11000
-    indices_top_fijo = np.argsort(y_pred_promedio_total)[-corte_fijo:]
-    y_pred_binary_fijo = np.zeros_like(y_pred_promedio_total, dtype=int)
+    # Corte fijo
+    indices_top_fijo = np.argsort(y_pred_promedio)[-corte_fijo:]
+    y_pred_binary_fijo = np.zeros_like(y_pred_promedio, dtype=int)
     y_pred_binary_fijo[indices_top_fijo] = 1
-
     resultados_df_fijo = pd.DataFrame({
-        'numero_de_cliente': clientes_test,
+        'numero_de_cliente': X_test.index,  # o la columna con IDs
         'Predict': y_pred_binary_fijo
     })
 
-    
-    # ===== Corte 2: mejor punto encontrado =====
-    indices_top_mejor = np.argsort(y_pred_promedio_total)[-mejor_corte_cantidad:]
-    y_pred_binary_mejor = np.zeros_like(y_pred_promedio_total, dtype=int)
+    # Mejor corte
+    indices_top_mejor = np.argsort(y_pred_promedio)[-mejor_corte:]
+    y_pred_binary_mejor = np.zeros_like(y_pred_promedio, dtype=int)
     y_pred_binary_mejor[indices_top_mejor] = 1
-
     resultados_df = pd.DataFrame({
-        'numero_de_cliente': clientes_test,
+        'numero_de_cliente': X_test.index,
         'Predict': y_pred_binary_mejor
     })
-    
-    y_test_np = y_test.to_numpy() 
-    
-    # Calcular métricas
-    total_predicciones = len(y_pred_binary_mejor)
-    predicciones_positivas = np.sum(y_pred_binary_mejor == 1)
-    porcentaje_positivas = predicciones_positivas / total_predicciones * 100
-    verdaderos_positivos = np.sum((y_pred_binary_mejor == 1) & (y_test_np == 1))
-    falsos_positivos = np.sum((y_pred_binary_mejor == 1) & (y_test_np == 0))
-    verdaderos_negativos = np.sum((y_pred_binary_mejor == 0) & (y_test_np == 0))
-    falsos_negativos = np.sum((y_pred_binary_mejor == 0) & (y_test_np == 1))
-    precision = verdaderos_positivos / (verdaderos_positivos + falsos_positivos + 1e-10)
-    recall = verdaderos_positivos / (verdaderos_positivos + falsos_negativos + 1e-10)
-    accuracy = (verdaderos_positivos + verdaderos_negativos) / total_predicciones
 
-    logger.info(f"--- RESULTADO FINAL ---")
-    logger.info(f"Ganancias promedio por corte: {dict(zip(cortes, ganancias_promedio_por_corte))}")
-    logger.info(f"Mejor corte (promedio): {mejor_corte_cantidad} envíos")
-    logger.info(f"Ganancia en mejor corte (promedio): {mejor_ganancia_promedio:,.0f}")
+    # Métricas
+    tp = np.sum((y_pred_binary_mejor == 1) & (y_test.to_numpy() == 1))
+    fp = np.sum((y_pred_binary_mejor == 1) & (y_test.to_numpy() == 0))
+    tn = np.sum((y_pred_binary_mejor == 0) & (y_test.to_numpy() == 0))
+    fn = np.sum((y_pred_binary_mejor == 0) & (y_test.to_numpy() == 1))
+    precision = tp / (tp + fp + 1e-10)
+    recall = tp / (tp + fn + 1e-10)
+    accuracy = (tp + tn) / len(y_test)
 
     resultados_test = {
-        'ganancia_test_promedio': float(mejor_ganancia_promedio),
-        'mejor_corte_promedio': int(mejor_corte_cantidad),
-        'matriz_ganancias': mganancias.tolist(),
-        'ganancias_promedio_por_corte': dict(zip(cortes, ganancias_promedio_por_corte)),
-        'total_predicciones': int(total_predicciones),
-        'predicciones_positivas': int(predicciones_positivas),
-        'porcentaje_positivas': float(porcentaje_positivas),
-        'verdaderos_positivos': int(verdaderos_positivos),
-        'falsos_positivos': int(falsos_positivos),
-        'verdaderos_negativos': int(verdaderos_negativos),
-        'falsos_negativos': int(falsos_negativos),
+        'ganancia_test_promedio': float(mejor_ganancia),
+        'mejor_corte_promedio': int(mejor_corte),
+        'ganancias_por_corte': dict(zip(cortes, ganancias_por_corte)),
+        'total_predicciones': len(y_test),
+        'predicciones_positivas': int(np.sum(y_pred_binary_mejor == 1)),
+        'porcentaje_positivas': float(np.mean(y_pred_binary_mejor) * 100),
+        'verdaderos_positivos': int(tp),
+        'falsos_positivos': int(fp),
+        'verdaderos_negativos': int(tn),
+        'falsos_negativos': int(fn),
         'precision': float(precision),
         'recall': float(recall),
         'accuracy': float(accuracy),
@@ -293,9 +254,9 @@ def evaluar_en_test(df: pl.DataFrame,
     }
 
     guardar_resultados_test(resultados_test)
-    
 
-    return resultados_test, resultados_df_fijo, resultados_df, y_pred_binary_mejor, y_test, y_pred_promedio_total
+    return resultados_test, resultados_df_fijo, resultados_df, y_pred_binary_mejor, y_test, y_pred_promedio
+
 
 
 
