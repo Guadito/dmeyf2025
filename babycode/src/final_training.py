@@ -14,6 +14,80 @@ from .loader import convertir_clase_ternaria_a_target_polars
 logger = logging.getLogger(__name__)
 
 
+#---------------- preparar datos finales zlightgbm
+
+def preparar_datos_final_zlgb(
+        df: pl.DataFrame,
+        training: list | int,
+        predict: list | int,
+        undersampling_0: int = 1
+    ):
+    """
+    Prepara datos finales para LightGBM
+    de forma consistente con la función de entrenamiento final.
+
+    Args:
+        df: Polars DataFrame completo
+        training: lista o entero con períodos de training
+        validation: lista o entero con períodos de validación
+        undersampling_0: cada cuántos registros clase 0 dejar (1 = no undersampling)
+
+    Returns:
+        tuple: (lgb_train, lgb_val, X_train, y_train, X_val, y_val)
+    """
+
+    logger.info("Preparando datos para entrenamiento final")
+
+    if isinstance(training, list): 
+        df_train = df.filter(pl.col('foto_mes').is_in(training))
+    else:
+        df_train = df.filter(pl.col('foto_mes') == training)
+
+    if isinstance(validation, list):
+        df_pred = df.filter(pl.col('foto_mes').is_in(predict))
+    else:
+        df_pred = df.filter(pl.col('foto_mes') == predict)
+
+    
+    logger.info(f"Tamaño original train: {len(df_train):,} | "f"Períodos train: {training}")
+    logger.info(f"Tamaño val: {len(df_pred):,} | "f"Períodos val: {predict}")
+
+
+    if df_train.is_empty():
+        raise ValueError(f"No se encontraron datos de training para períodos: {training}")
+    if df_pred.is_empty():
+        raise ValueError(f"No se encontraron datos de validation para períodos: {predict}")
+
+    
+    df_train = convertir_clase_ternaria_a_target_polars(df_train, baja_2_1=True)
+    #df_val = convertir_clase_ternaria_a_target_polars(df_val, baja_2_1=False)
+
+    df_train = aplicar_undersampling_clase0(df_train, undersampling_0, seed=SEMILLAS[0])
+    logger.info(f"Train luego de undersampling: {len(df_train):,}")
+
+    if q_canaritos > 0:
+        df_train = create_canaritos(df_train, qcanaritos=qcanaritos, seed=SEMILLAS[0])  #ver semilla
+        df_pred = create_canaritos(df_pred, qcanaritos=qcanaritos, seed=SEMILLAS[1])
+    
+    X_train = df_train.drop('clase_ternaria')
+    y_train = df_train['clase_ternaria'].to_numpy()
+
+    X_predict = predict_data.drop(columns = ['clase_ternaria'])
+    clientes_predict = predict_data['numero_de_cliente']
+
+   logger.info("Distribución training:")
+    for clase, count in df_train['clase_ternaria'].value_counts().iter_rows():
+        logger.info(f"  Clase {clase}: {count:,} ({count/len(df_train)*100:.0f}%)")
+
+
+
+    lgb_train = lgb.Dataset(X_train.to_pandas(), label=y_train)
+    #lgb_val = lgb.Dataset(X_val.to_pandas(), label=y_val, reference=lgb_train)
+
+    
+    return lgb_train, X_train, y_train, X_pred, clientes_predict
+
+#------------------------------> preparar datos optuna
 
 def preparar_datos_entrenamiento_final(df: pd.DataFrame) -> tuple:
     """
