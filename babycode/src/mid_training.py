@@ -130,16 +130,16 @@ def preparar_datos_training_lgb(
         logger.info(f"  Clase {clase}: {count:,} ({count/len(df_val)*100:.0f}%)")
 
     lgb_train = lgb.Dataset(X_train.to_pandas(), label=y_train)
-    lgb_val = lgb.Dataset(X_val.to_pandas(), label=y_val, reference=lgb_train)
+    #lgb_val = lgb.Dataset(X_val.to_pandas(), label=y_val, reference=lgb_train)
 
     
-    return lgb_train, lgb_val, X_train, y_train, X_val, y_val
+    return lgb_train, X_train, y_train, X_val, y_val
 
 
 
 # -------------------> zlightgbm
 
-def entrenar_modelo(lgb_train: lgb.Dataset, lgb_val: lgb.Dataset, mejores_params: dict) -> list:
+def entrenar_modelo(lgb_train: lgb.Dataset, params: dict) -> list:
     """
     Entrena un modelo con diferentes semillas.
     
@@ -160,20 +160,12 @@ def entrenar_modelo(lgb_train: lgb.Dataset, lgb_val: lgb.Dataset, mejores_params
         logger.info(f"Entrenando modelo {idx+1}/{len(semillas)} con semilla {semilla}")
         
         # Configurar parámetros con la semilla actual
-        params = {
-            'objective': 'binary',
-            'metric': Custom,  
-            'random_state': semilla,
-            'verbosity': -1,
-            **mejores_params,           
-        }
-        
+        params = params
 
         # Entrenar modelo
         modelo = lgb.train(
             params,
-            lgb_train,
-            valid_sets=[lgb_val]  #VER
+            data = lgb_train
         )
         
         modelos.append(modelo)
@@ -259,7 +251,7 @@ def evaluar_en_test(modelos: list, X_test: pd.DataFrame, y_test: pd.Series,
 
     guardar_resultados_test(resultados_test)
 
-    return resultados_test, resultados_df_fijo, resultados_df, y_pred_binary_mejor, y_test, y_pred_promedio
+    return resultados_test, resultados_df_fijo, resultados_df, y_pred_binary_mejor, y_test, y_pred_promedio, mejor_corte
 
 
 

@@ -9,7 +9,10 @@ KAapo-506-0.2undersampling_9960.csv    409.599
 saco variables 
 #dataset[, cprestamos_prendarios := NULL ]
 #dataset[, mprestamos_prendarios := NULL ]
+406799 para corte 9020
+399199 para corte 11000
 
 
 3) APO 506 + undersampling default
 saco meses  #202001, 202002, 202003, 202004, 202005, 202006,
+403.199 corte 10.000
