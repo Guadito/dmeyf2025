@@ -65,29 +65,41 @@ def main():
     df_f = cargar_datos(DATA_PATH_BASE_VM)
     df_f = crear_clase_ternaria(df_f)    
 
+
+    cols_to_drop = ['mprestamos_personales', 'cprestamos_personales']  #'active_quarter', 'cprestamos_prendarios','mprestamos_prendarios', 'mpayroll_2', 'mpayroll_2', 'visa_cadelantosefectivo' ,'ctrx_quarter' 'cdescubierto_preacordado'
+    df_f = drop_columns(df_f, cols_to_drop)
+
+    df_f = df_f.with_columns([(pl.col("foto_mes") % 100).alias("nmes")])
+
     df_f = normalizar_ctrx_quarter(df_f)
     
     col = ['mpayroll']
     df_f = generar_sobre_edad(df_f, col)
-    
-    cols_to_drop = ['mprestamos_personales', 'cprestamos_personales'] 
-    #'active_quarter', 'cprestamos_prendarios','mprestamos_prendarios', 'mpayroll_2', 'mpayroll_2', 'visa_cadelantosefectivo' ,'ctrx_quarter' 'cdescubierto_preacordado'
+
+
+    col = [c for c in df_f.columns if c not in ['numero_de_cliente', 'foto_mes', 'clase_ternaria']]
+    df_f = feature_engineering_lag_delta_polars(df_f, col, cant_lag = 2)
+    cols_to_drop = ['periodo0']
     df_f = drop_columns(df_f, cols_to_drop)
+    
+    df_df = tendencia_polars(df_f, cols, ventana=6, tendencia=True, minimo=False, maximo=False, promedio=False)
+
+
+    
+
+
     
     #df_f = zero_replace(df_f)
     
     #col_montos = select_col_montos(df_f)
     #df_f = feature_engineering_rank_neg_batch(df_f, col_montos)
     
-    col = [c for c in df_f.columns if c not in ['numero_de_cliente', 'foto_mes', 'clase_ternaria']]
-    df_f = feature_engineering_lag_delta_polars(df_f, col, cant_lag = 2)
-    #df_f = feature_engineering_rolling_mean(df_f, col, ventana = 3)
+    
 
-    cols_to_drop = ['periodo0']
-    df_f = drop_columns(df_f, cols_to_drop)
+
 
     
-    df_f = create_canaritos(df_f, 5)
+    df_f = create_canaritos(df_f, qcanaritos)
     
 
 
