@@ -24,6 +24,16 @@ dataset[, mcuentas_saldo_sobre_edad := mcuentas_saldo / cliente_edad]
 
 4) APO 506_d + undersampling default
 sin meses   #202001, 202002, 202003, 202004, 202005, 202006,
-agrego esta variable: 
+quito esta variable: 
 dataset[, active_quarter := NULL ]
+402.399
+
+
+4) APO 506_e + undersampling default
+sin meses   #202001, 202002, 202003, 202004, 202005, 202006,
+quito esta variable: 
+dataset[, ctrx_quarter := NULL]
+
+
+
 

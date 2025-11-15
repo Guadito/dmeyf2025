@@ -116,6 +116,8 @@ def preparar_datos_training_lgb(
         df_train = create_canaritos(df_train, qcanaritos=qcanaritos)  #ver semilla
         df_val = create_canaritos(df_val, qcanaritos=qcanaritos)
     
+    logger.info(f"Canaritos creados en train y test: {qcanaritos}")
+    
     X_train = df_train.drop('clase_ternaria')
     y_train = df_train['clase_ternaria'].to_numpy()
 
@@ -153,13 +155,13 @@ def entrenar_modelo(lgb_train: lgb.Dataset, params: dict) -> list:
     Returns:
         list: Lista de modelos entrenados
     """
-    logger.info("Iniciando entrenamiento de modelos finales con múltiples semillas")
+    logger.info("Iniciando entrenamiento de modelo")
     
     modelos = []
-    semillas = SEMILLAS if isinstance(SEMILLAS, list) else [SEMILLAS]
+    #semillas = SEMILLAS[0]
     
-    for idx, semilla in enumerate(semillas):
-        logger.info(f"Entrenando modelo {idx+1}/{len(semillas)} con semilla {semilla}")
+    #for idx, semilla in enumerate(semillas):
+        logger.info(f"Entrenando modelo")
         
         # Configurar parámetros con la semilla actual
         params = params
@@ -167,7 +169,7 @@ def entrenar_modelo(lgb_train: lgb.Dataset, params: dict) -> list:
         # Entrenar modelo
         modelo = lgb.train(
             params,
-            data = lgb_train
+            lgb_train
         )
         
         modelos.append(modelo)

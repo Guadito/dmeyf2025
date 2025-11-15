@@ -17,6 +17,7 @@ from src.kaggle import *
 import gc
 from pathlib import Path
 import numpy as np
+
 logging.getLogger().setLevel(logging.ERROR)
 
 
@@ -99,11 +100,11 @@ def main():
     #2 - entrenar el modelo y evaluar ganancias
     training = MES_TRAIN
     validation = MES_TEST
-    lgb_train, lgb_val, X_train, y_train, X_val, y_val = preparar_datos_training_lgb(df_f, 
-                                                                                     training=training, 
-                                                                                     validation=validation, 
-                                                                                     undersampling_0= 0.05,
-                                                                                     qcanaritos = 5)
+    lgb_train, X_train, y_train, X_val, y_val = preparar_datos_training_lgb(df_f, 
+                                                                                training=training, 
+                                                                                validation=validation, 
+                                                                                undersampling_0= 0.05,
+                                                                                qcanaritos = 5)
 
 
     modelo = entrenar_modelo(lgb_train, PARAMETROS_LGBM_Z)
