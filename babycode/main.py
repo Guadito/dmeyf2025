@@ -68,9 +68,8 @@ def main():
 
     cols_to_drop = ['mprestamos_personales', 'cprestamos_personales']  #'active_quarter', 'cprestamos_prendarios','mprestamos_prendarios', 'mpayroll_2', 'mpayroll_2', 'visa_cadelantosefectivo' ,'ctrx_quarter' 'cdescubierto_preacordado'
     df_f = drop_columns(df_f, cols_to_drop)
-
+    
     df_f = df_f.with_columns([(pl.col("foto_mes") % 100).alias("nmes")])
-
     df_f = normalizar_ctrx_quarter(df_f)
     
     col = ['mpayroll']
@@ -96,7 +95,7 @@ def main():
     lgb_train, lgb_val, X_train, y_train, X_val, y_val = preparar_datos_training_lgb(df_f, training=training, validation=validation, undersampling_0= 0.05)
 
 
-    modelo = entrenar_modelo(lgb_train, params: params)
+    modelo = entrenar_modelo(lgb_train, PARAMETROS_LGBM_Z)
     cortes = [9000, 9500, 10000, 10500, 11000, 11500, 12000, 12500, 13000, 13500]
     _,_,_,_,_,_,mejor_corte = evaluar_en_test(modelo, X_val, y_val, cortes: list, corte_fijo: int = 11000):
 
@@ -105,6 +104,10 @@ def main():
     training = [FINAL_TRAIN]
     validation = [FINAL_PREDICT]
     lgb_train, X_train, y_train, X_val, _ = preparar_datos_training_lgb(df_f, training=training, validation=validation, undersampling_0= 0.05)
+
+
+
+    generar_predicciones_finales(modelos: list, X_predict: pd.DataFrame, clientes_predict: np.ndarray, corte: int = 10000)
 
 
 

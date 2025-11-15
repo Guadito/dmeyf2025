@@ -271,7 +271,6 @@ def generar_predicciones_por_cantidad(
         raise
 
 
-# -------------------------> final 
 #-----------------------------------------> entrenar modelo final
 
 def entrenar_modelo_final(X_train: pd.DataFrame, y_train: pd.Series, mejores_params: dict) -> list:
@@ -332,3 +331,55 @@ def entrenar_modelo_final(X_train: pd.DataFrame, y_train: pd.Series, mejores_par
     logger.info(f"Total de modelos entrenados: {len(modelos)}")
 
     return modelos
+
+
+# ------------------------------>
+
+def generar_predicciones_finales(modelos: list, X_predict: pd.DataFrame, clientes_predict: np.ndarray, corte: int = 10000) -> pd.DataFrame:
+    """
+    Genera las predicciones finales para el período objetivo.
+  
+    Args:
+        modelo: Modelo entrenado
+        X_predict: Features para predicción
+        clientes_predict: IDs de clientes
+        umbral: Umbral para clasificación binaria
+  
+    Returns:
+        pd.DataFrame: DataFrame con numero_cliente y predict
+    """
+    logger.info(f"Generando predicciones finales con {len(modelos)} modelos.")
+  
+    # Generar probabilidades con el modelo entrenado
+
+    probabilidades_todos = []
+    for idx, modelo in enumerate(modelos):
+        proba = modelo.predict(X_predict)
+        probabilidades_todos.append(proba)
+        logger.debug(f"Predicciones del modelo {idx+1} generadas")
+
+
+    # Promedio de probabilidades
+    probabilidades_promedio = np.mean(probabilidades_todos, axis=0)
+  
+    # Convertir a predicciones binarias con el umbral establecido
+    predicciones_binarias = (probabilidades_promedio >= umbral).astype(int)
+  
+    # Crear DataFrame de resultados
+    resultados = pd.DataFrame({
+        'numero_de_cliente': clientes_predict,
+        'Predict': predicciones_binarias})
+    
+    # Estadísticas
+    total_predicciones = len(resultados)
+    predicciones_positivas = (resultados['Predict'] == 1).sum()
+    porcentaje_positivas = (predicciones_positivas / total_predicciones) * 100
+    
+    logger.info(f"Predicciones generadas:")
+    logger.info(f"  Total clientes: {total_predicciones:,}")
+    logger.info(f"  Predicciones positivas: {predicciones_positivas:,} ({porcentaje_positivas:.2f}%)")
+    logger.info(f"  Predicciones negativas: {total_predicciones - predicciones_positivas:,}")
+    logger.info(f"  Umbral utilizado: {umbral}")
+    logger.info(f"  Modelos promediados: {len(modelos)}")
+  
+    return resultados
