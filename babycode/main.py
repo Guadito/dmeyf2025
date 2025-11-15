@@ -104,7 +104,7 @@ def main():
     #3 - entrenar el modelo final y predecir
     training = [FINAL_TRAIN]
     validation = [FINAL_PREDICT]
-    lgb_train, X_train, y_train, X_val, _ = preparar_datos_training_lgb(df_f, training: list | int, validation: list | int, undersampling_0: int = 0.05)
+    lgb_train, X_train, y_train, X_val, _ = preparar_datos_training_lgb(df_f, training=training, validation=validation, undersampling_0= 0.05)
 
 
 
