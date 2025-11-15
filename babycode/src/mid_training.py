@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 #---------------------------->
 
-def create_canaritos(df: pl.DataFrame, qcanaritos: int = 50) -> pl.DataFrame:
+def create_canaritos(df: pl.DataFrame, qcanaritos: int = 5) -> pl.DataFrame:
     """
     Añade un número específico de columnas "canarito" (features aleatorias)
     a un DataFrame de Polars.
@@ -104,13 +104,17 @@ def preparar_datos_training_lgb(
     if df_val.is_empty():
         raise ValueError(f"No se encontraron datos de validation para períodos: {validation}")
 
+    
     df_train = convertir_clase_ternaria_a_target_polars(df_train, baja_2_1=True)
     df_val = convertir_clase_ternaria_a_target_polars(df_val, baja_2_1=False)
 
     df_train = aplicar_undersampling_clase0(df_train, undersampling_0, seed=SEMILLAS[0])
-
     logger.info(f"Train luego de undersampling: {len(df_train):,}")
 
+    if q_canaritos > 0:
+        df_train = create_canaritos(df_train, qcanaritos=qcanaritos, seed=SEMILLAS[0])  #ver semilla
+        df_val = create_canaritos(df_val, qcanaritos=qcanaritos, seed=SEMILLAS[1])
+    
     X_train = df_train.drop('clase_ternaria')
     y_train = df_train['clase_ternaria'].to_numpy()
 

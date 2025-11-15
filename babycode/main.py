@@ -77,17 +77,13 @@ def main():
     df_f = generar_sobre_edad(df_f, col)
 
 
+
     col = [c for c in df_f.columns if c not in ['numero_de_cliente', 'foto_mes', 'clase_ternaria']]
     df_f = feature_engineering_lag_delta_polars(df_f, col, cant_lag = 2)
     cols_to_drop = ['periodo0']
     df_f = drop_columns(df_f, cols_to_drop)
     
     df_df = tendencia_polars(df_f, cols, ventana=6, tendencia=True, minimo=False, maximo=False, promedio=False)
-
-
-    
-
-
     
     #df_f = zero_replace(df_f)
     
@@ -95,14 +91,12 @@ def main():
     #df_f = feature_engineering_rank_neg_batch(df_f, col_montos)
     
     
-
-
-
-    
-    df_f = create_canaritos(df_f, qcanaritos)
+    training = [MES_TRAIN]
+    validation = [MES_VAL]
+    lgb_train, lgb_val, X_train, y_train, X_val, y_val = preparar_datos_training_lgb( df_f, training: list | int, validation: list | int, undersampling_0: int = 0.05)
     
 
-
+    
 
 
 
