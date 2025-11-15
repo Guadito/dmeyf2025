@@ -113,8 +113,8 @@ def preparar_datos_training_lgb(
     logger.info(f"Train luego de undersampling: {len(df_train):,}")
 
     if qcanaritos > 0:
-        df_train = create_canaritos(df_train, qcanaritos=qcanaritos, seed=SEMILLAS[0])  #ver semilla
-        df_val = create_canaritos(df_val, qcanaritos=qcanaritos, seed=SEMILLAS[1])
+        df_train = create_canaritos(df_train, qcanaritos=qcanaritos)  #ver semilla
+        df_val = create_canaritos(df_val, qcanaritos=qcanaritos)
     
     X_train = df_train.drop('clase_ternaria')
     y_train = df_train['clase_ternaria'].to_numpy()

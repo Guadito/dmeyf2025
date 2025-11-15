@@ -48,11 +48,10 @@ logger.info(f"DT crudo DATA_PATH_BASE_VM: {DATA_PATH_BASE_VM}")
 logger.info(f"DT transformado DATA_PATH_2: {DATA_PATH_TRANS_VM}")
 logger.info(f"BUCKET_NAME: {BUCKET_NAME}")
 logger.info(f"SEMILLAS: {SEMILLAS}")
-logger.info(f"Meses de entrenamiento para bayesiana: {MES_TRAIN}")
-logger.info(f"Meses de entrenamiento para testeo: {MES_TRAIN2}")
-logger.info(f"MES_VAL: {MES_VAL}")
+logger.info(f"MES_TRAIN: {MES_TRAIN}")
 logger.info(f"MES_TEST: {MES_TEST}")
 logger.info(f"TRAIN_FINAL: {FINAL_TRAIN}")
+logger.info(f"FINAL_PREDICT: {FINAL_PREDICT}")
 logger.info(f"GANANCIA_ACIERTO: {GANANCIA_ACIERTO}")
 logger.info(f"COSTO_ESTIMULO: {COSTO_ESTIMULO}")
 
@@ -66,7 +65,7 @@ def main():
     df_f = crear_clase_ternaria(df_f)    
     
     #SAMPLE
-    n_sample = 100000
+    n_sample = 10000
     df_f, _ = train_test_split(
         df_f,
         train_size=n_sample,
