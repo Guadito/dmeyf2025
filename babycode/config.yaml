@@ -71,4 +71,17 @@ params_lgb_z:
         qcanaritos: [5] 
         min_data_in_leaf: [2000]
         gradient_bound: [0.01]
-        metric: custom
+        metric: "custom"
+        boosting= "gbdt"
+        objective= "binary"
+        first_metric_only= FALSE
+        boost_from_average= TRUE
+        feature_pre_filter= FALSE
+        force_row_wise= TRUE
+        verbosity= -100
+        seed= SEMILLAS[0]
+        max_bin= 31
+        num_iterations= 9999
+        num_leaves= 9999
+        learning_rate= 1.0
+        feature_fraction = 0.5

@@ -65,7 +65,10 @@ def main():
     df_f = cargar_datos(DATA_PATH_BASE_VM)
     df_f = crear_clase_ternaria(df_f)    
 
-
+    df_f = normalizar_ctrx_quarter(df_f)
+    
+    col = ['mpayroll']
+    df_f = generar_sobre_edad(df_f, col)
     
     cols_to_drop = ['mprestamos_personales', 'cprestamos_personales'] 
     #'active_quarter', 'cprestamos_prendarios','mprestamos_prendarios', 'mpayroll_2', 'mpayroll_2', 'visa_cadelantosefectivo' ,'ctrx_quarter' 'cdescubierto_preacordado'
@@ -83,12 +86,17 @@ def main():
     cols_to_drop = ['periodo0']
     df_f = drop_columns(df_f, cols_to_drop)
 
-
-    df_f = create_canaritos(df_f, 50)
     
-    
+    df_f = create_canaritos(df_f, 5)
     
 
+
+
+
+
+    cortes = [9000, 9500, 10000, 10500, 11000, 11500, 12000, 12500, 13000, 13500]
+    
+    
 
 
 

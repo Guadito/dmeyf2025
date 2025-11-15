@@ -748,4 +748,74 @@ def generar_sobre_edad(df: pl.DataFrame, columnas: List[str]) -> pl.DataFrame:
     return df.with_columns(nuevas_columnas)
 
 
-# -------------------> 
+# -------------------> funcion tendencias
+
+def fhist_python(pcolumna, pdesde):
+    pcolumna = np.array(pcolumna, dtype=float)
+    pdesde = np.array(pdesde, dtype=int)
+    n = len(pcolumna)
+    
+    out = np.full((5, n), np.nan)  # 5 filas: slope, min, max, mean, lag
+    
+    for i in range(n):
+        # lag (valor anterior)
+        if i > 0:
+            out[4, i] = pcolumna[i-1]
+
+        # ventana desde pdesde[i]-1 hasta i
+        start = max(pdesde[i]-1, 0)
+        end = i + 1
+        window = pcolumna[start:end]
+        
+        # solo valores no nulos
+        valid = ~np.isnan(window)
+        x = np.arange(1, np.sum(valid)+1)
+        y = window[valid]
+        
+        if len(y) > 1:
+            xsum = x.sum()
+            ysum = y.sum()
+            xysum = (x * y).sum()
+            xxsum = (x * x).sum()
+            out[0, i] = (len(y) * xysum - xsum * ysum) / (len(y) * xxsum - xsum**2)  # slope
+            out[1, i] = y.min()  # min
+            out[2, i] = y.max()  # max
+            out[3, i] = y.mean() # mean
+            
+    return out.T  # Transponemos para que quede forma (n,5)
+
+
+#---------------------------------> SLOPE
+
+def tendencia_polars(df, cols, ventana=6, tendencia=True, minimo=True, maximo=True, promedio=True):
+    df = df.sort(["numero_de_cliente", "foto_mes"])
+    
+    for col in cols:
+        s = df[col]
+
+        if minimo:
+            df = df.with_columns([s.rolling_min(window_size=ventana, min_periods=2).alias(f"{col}_min{ventana}")])
+        
+        if maximo:
+            df = df.with_columns([s.rolling_max(window_size=ventana, min_periods=2).alias(f"{col}_max{ventana}")])
+            
+        if promedio:
+            df = df.with_columns([s.rolling_mean(window_size=ventana, min_periods=2).alias(f"{col}_avg{ventana}")])
+            
+        if tendencia:
+            def slope(arr):
+                arr = np.array(arr)
+                n = len(arr)
+                x = np.arange(1, n+1)
+                mask = ~np.isnan(arr)
+                if mask.sum() < 2:
+                    return np.nan
+                x = x[mask]
+                y = arr[mask]
+                return (len(y) * (x*y).sum() - x.sum()*y.sum()) / (len(y)*np.sum(x*x) - x.sum()**2)
+            df = df.groupby("numero_de_cliente").agg([
+                pl.col(col).apply(lambda x: np.convolve(x, np.ones(ventana), 'valid'), return_dtype=pl.Float64).alias(f"{col}_tend{ventana}")
+            ])
+    
+    return df
+
