@@ -1,0 +1,9 @@
+
+1) APO 506 + undersampling 0.2
+KAapo-506-0.2undersampling_9960.csv    409.599
+#dataset[, cprestamos_prendarios := NULL ]
+#dataset[, mprestamos_prendarios := NULL ]
+
+
+2) APO 506 + undersampling 0.05 (para correr más rápido)
+saco variables 

@@ -715,3 +715,37 @@ def feature_engineering_reg(df: pl.DataFrame, columnas: list[str], ventana: int 
     logger.info(f"Tendencias generadas: {df_result.height:,} filas × {df_result.width:,} columnas")
 
     return df_final
+
+
+# ---------------------------------> normalizar por antiguedad del cliente 
+def normalizar_ctrx_quarter(df: pl.DataFrame) -> pl.DataFrame:
+    """
+    Crea la columna 'ctrx_quarter_normalizado' ajustando según 'cliente_antiguedad'.
+    """
+    return df.with_columns([
+        pl.when(pl.col("cliente_antiguedad") == 1)
+          .then(pl.col("ctrx_quarter") * 5.0)
+          .when(pl.col("cliente_antiguedad") == 2)
+          .then(pl.col("ctrx_quarter") * 2.0)
+          .when(pl.col("cliente_antiguedad") == 3)
+          .then(pl.col("ctrx_quarter") * 1.2)
+          .otherwise(pl.col("ctrx_quarter"))
+          .cast(pl.Float64)
+          .alias("ctrx_quarter_normalizado")
+    ])
+
+# --------------------------------------> generar columna / edad 
+
+
+def generar_sobre_edad(df: pl.DataFrame, columnas: List[str]) -> pl.DataFrame:
+    """
+    Genera columnas nuevas dividiendo cada columna en 'columnas' por 'cliente_edad'.
+    
+    Cada nueva columna se llamará 'nombre_columna_sobre_edad'.
+    """
+    nuevas_columnas = [(pl.col(col) / pl.col("cliente_edad")).alias(f"{col}_sobre_edad")
+        for col in columnas]
+    return df.with_columns(nuevas_columnas)
+
+
+# -------------------> 

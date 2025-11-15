@@ -27,7 +27,7 @@ def cargar_datos(path: str) -> pl.DataFrame | None:
     logger.info(f"Cargando dataset desde {path}")
 
     try:
-        df = pl.read_csv(path, infer_schema_length=10000)
+        df = pl.read_csv(path, infer_schema_length=None)
         logger.info(f"Dataset cargado con Polars: {df.height} filas y {df.width} columnas")
         return df
 
