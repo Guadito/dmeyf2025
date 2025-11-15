@@ -4,6 +4,7 @@ import logging
 from datetime import datetime
 from .config import STUDY_NAME
 from .config import BUCKET_NAME
+import polars as pl
 import json
 
 logger = logging.getLogger(__name__)

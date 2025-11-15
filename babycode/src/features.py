@@ -737,7 +737,7 @@ def normalizar_ctrx_quarter(df: pl.DataFrame) -> pl.DataFrame:
 # --------------------------------------> generar columna / edad 
 
 
-def generar_sobre_edad(df: pl.DataFrame, columnas: List[str]) -> pl.DataFrame:
+def generar_sobre_edad(df: pl.DataFrame, columnas: list[str]) -> pl.DataFrame:
     """
     Genera columnas nuevas dividiendo cada columna en 'columnas' por 'cliente_edad'.
     
@@ -745,6 +745,8 @@ def generar_sobre_edad(df: pl.DataFrame, columnas: List[str]) -> pl.DataFrame:
     """
     nuevas_columnas = [(pl.col(col) / pl.col("cliente_edad")).alias(f"{col}_sobre_edad")
         for col in columnas]
+    
+    logger.info(f"Feature engineering completado: edad.")
     return df.with_columns(nuevas_columnas)
 
 
@@ -755,6 +757,7 @@ def tendencia_polars(df, cols, ventana=6, tendencia=True, minimo=True, maximo=Tr
     Versión optimizada para datasets grandes.
     """
     df = df.sort(["numero_de_cliente", "foto_mes"])
+    logger.info(f"Feature engineering tendencias iniciado.")
     
     expressions = []
     
@@ -789,7 +792,8 @@ def tendencia_polars(df, cols, ventana=6, tendencia=True, minimo=True, maximo=Tr
                 .over("numero_de_cliente")
                 .alias(f"{col}_tend{ventana}")
             )
-    
-    # Una sola operación with_columns con todas las expresiones
+
+    logger.info(f"Feature engineering tendencias completado. Se generaron {len(expressions)} columnas nuevas.")
+
     return df.with_columns(expressions)
 

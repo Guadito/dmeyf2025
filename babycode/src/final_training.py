@@ -10,6 +10,7 @@ from .best_params import *
 from .gain_function import *
 from .output_manager import *
 from .loader import convertir_clase_ternaria_a_target_polars
+import polars as pl
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,6 @@ def preparar_datos_final_zlgb(
     
     df_train = convertir_clase_ternaria_a_target_polars(df_train, baja_2_1=True)
     #df_val = convertir_clase_ternaria_a_target_polars(df_val, baja_2_1=False)
-
     df_train = aplicar_undersampling_clase0(df_train, undersampling_0, seed=SEMILLAS[0])
     logger.info(f"Train luego de undersampling: {len(df_train):,}")
 
@@ -72,15 +72,14 @@ def preparar_datos_final_zlgb(
     X_train = df_train.drop('clase_ternaria')
     y_train = df_train['clase_ternaria'].to_numpy()
 
-    X_predict = predict_data.drop(columns = ['clase_ternaria'])
-    clientes_predict = predict_data['numero_de_cliente']
-
-   logger.info("Distribución training:")
+    X_predict = df_pred.drop(columns = ['clase_ternaria'])
+    clientes_predict = df_pred['numero_de_cliente']
+    
+    logger.info("Distribución training:")
     for clase, count in df_train['clase_ternaria'].value_counts().iter_rows():
         logger.info(f"  Clase {clase}: {count:,} ({count/len(df_train)*100:.0f}%)")
 
-
-
+    
     lgb_train = lgb.Dataset(X_train.to_pandas(), label=y_train)
     #lgb_val = lgb.Dataset(X_val.to_pandas(), label=y_val, reference=lgb_train)
 

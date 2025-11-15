@@ -15,7 +15,7 @@ from .grafico_test import *
 from .loader import *
 from .features import aplicar_undersampling_clase0
 import gc
-
+import polars as pl
 logger = logging.getLogger(__name__)
 
 
@@ -66,7 +66,8 @@ def preparar_datos_training_lgb(
         df: pl.DataFrame,
         training: list | int,
         validation: list | int,
-        undersampling_0: int = 1
+        undersampling_0: int = 1,
+        qcanaritos: int = 0
     ):
     """
     Prepara datos de entrenamiento y validación para LightGBM
@@ -111,7 +112,7 @@ def preparar_datos_training_lgb(
     df_train = aplicar_undersampling_clase0(df_train, undersampling_0, seed=SEMILLAS[0])
     logger.info(f"Train luego de undersampling: {len(df_train):,}")
 
-    if q_canaritos > 0:
+    if qcanaritos > 0:
         df_train = create_canaritos(df_train, qcanaritos=qcanaritos, seed=SEMILLAS[0])  #ver semilla
         df_val = create_canaritos(df_val, qcanaritos=qcanaritos, seed=SEMILLAS[1])
     
@@ -121,13 +122,14 @@ def preparar_datos_training_lgb(
     X_val = df_val.drop('clase_ternaria')
     y_val = df_val['clase_ternaria'].to_numpy()
 
-   logger.info("Distribución training:")
+    logger.info("Distribución training:")
     for clase, count in df_train['clase_ternaria'].value_counts().iter_rows():
         logger.info(f"  Clase {clase}: {count:,} ({count/len(df_train)*100:.0f}%)")
 
     logger.info("Distribución validation:")
     for clase, count in df_val['clase_ternaria'].value_counts().iter_rows():
         logger.info(f"  Clase {clase}: {count:,} ({count/len(df_val)*100:.0f}%)")
+
 
     lgb_train = lgb.Dataset(X_train.to_pandas(), label=y_train)
     #lgb_val = lgb.Dataset(X_val.to_pandas(), label=y_val, reference=lgb_train)

@@ -15,6 +15,7 @@ from .grafico_test import *
 from .loader import *
 from .features import aplicar_undersampling_clase0
 import gc
+import polars as pl
 
 logger = logging.getLogger(__name__)
 

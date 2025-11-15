@@ -67,21 +67,21 @@ params_lgb_2:
         min_split_gain: [0.0, 0.1]
 
 params_lgb_z:  
-        learning_rate: [1.0]       
-        qcanaritos: [5] 
-        min_data_in_leaf: [2000]
-        gradient_bound: [0.01]
+        learning_rate: 1.0       
+        qcanaritos: 5 
+        min_data_in_leaf: 2000
+        gradient_bound: 0.01
         metric: "custom"
-        boosting= "gbdt"
-        objective= "binary"
-        first_metric_only= FALSE
-        boost_from_average= TRUE
-        feature_pre_filter= FALSE
-        force_row_wise= TRUE
-        verbosity= -100
-        seed= SEMILLAS[0]
-        max_bin= 31
-        num_iterations= 9999
-        num_leaves= 9999
-        learning_rate= 1.0
-        feature_fraction = 0.5
+        boosting: "gbdt"
+        objective: "binary"
+        first_metric_only: FALSE
+        boost_from_average: TRUE
+        feature_pre_filter: FALSE
+        force_row_wise: TRUE
+        verbosity: -100
+        seed: SEMILLAS[0]
+        max_bin: 31
+        num_iterations: 9999
+        num_leaves: 9999
+        learning_rate: 1.0
+        feature_fraction: 0.5

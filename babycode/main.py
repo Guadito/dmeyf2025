@@ -64,6 +64,14 @@ def main():
     # 1- cargar datos 
     df_f = cargar_datos(DATA_PATH_BASE_VM)
     df_f = crear_clase_ternaria(df_f)    
+    
+    #SAMPLE
+    n_sample = 100000
+    df_f, _ = train_test_split(
+        df_f,
+        train_size=n_sample,
+        stratify=df_f['clase_ternaria'],
+        random_state=42)
 
 
     cols_to_drop = ['mprestamos_personales', 'cprestamos_personales']  #'active_quarter', 'cprestamos_prendarios','mprestamos_prendarios', 'mpayroll_2', 'mpayroll_2', 'visa_cadelantosefectivo' ,'ctrx_quarter' 'cdescubierto_preacordado'
@@ -80,7 +88,7 @@ def main():
     cols_to_drop = ['periodo0']
     df_f = drop_columns(df_f, cols_to_drop)
     
-    df_df = tendencia_polars(df_f, cols, ventana=6, tendencia=True, minimo=False, maximo=False, promedio=False)
+    df_df = tendencia_polars(df_f, col, ventana=6, tendencia=True, minimo=False, maximo=False, promedio=False)
     
     #df_f = zero_replace(df_f)
     
@@ -90,21 +98,29 @@ def main():
 
 
     #2 - entrenar el modelo y evaluar ganancias
-    training = [MES_TRAIN]
-    validation = [MES_VAL]
-    lgb_train, lgb_val, X_train, y_train, X_val, y_val = preparar_datos_training_lgb(df_f, training=training, validation=validation, undersampling_0= 0.05)
+    training = MES_TRAIN
+    validation = MES_TEST
+    lgb_train, lgb_val, X_train, y_train, X_val, y_val = preparar_datos_training_lgb(df_f, 
+                                                                                     training=training, 
+                                                                                     validation=validation, 
+                                                                                     undersampling_0= 0.05,
+                                                                                     qcanaritos = 5)
 
 
     modelo = entrenar_modelo(lgb_train, PARAMETROS_LGBM_Z)
     cortes = [9000, 9500, 10000, 10500, 11000, 11500, 12000, 12500, 13000, 13500]
-    _,_,_,_,_,_,mejor_corte = evaluar_en_test(modelo, X_val, y_val, cortes: list, corte_fijo: int = 11000):
+    _,_,_,_,_,_,mejor_corte = evaluar_en_test(modelo, X_val, y_val, cortes=cortes, corte_fijo= 11000)
 
 
     #3 - entrenar el modelo final y predecir
     
     training = FINAL_TRAIN
     predict = FINAL_PREDICT
-    lgb_train_final, X_train_final, y_train_final, X_pred, clientes_predict = preparar_datos_final_zlgb (df_f, training=training, predict=predict, undersampling_0= 0.05)
+    lgb_train_final, X_train_final, y_train_final, X_pred, clientes_predict = preparar_datos_final_zlgb (df_f, 
+                                                                                                         training=training, 
+                                                                                                         predict=predict, 
+                                                                                                         undersampling_0= 0.05,
+                                                                                                         qcanaritos = 5)
 
     modelo_final = entrenar_modelo(lgb_train_final, PARAMETROS_LGBM_Z)
     generar_predicciones_finales(modelo_final, X_pred, clientes_predict, corte = mejor_corte)
