@@ -167,6 +167,15 @@ def entrenar_modelo(lgb_train: lgb.Dataset, params: dict) -> list:
         
     modelos.append(modelo)
     logger.info(f"Modelo entrenado exitosamente")
+
+    # Crear carpeta para bases de datos si no existe
+    path_db = os.path.join(BUCKET_NAME, "modelos_modelos")
+    os.makedirs(path_db, exist_ok=True)
+    study_name = STUDY_NAME
+
+    semilla = params.get("seed", "NO_SEED")
+    arch_modelo = os.path.join(path_db, f"mod_{study_name}_{semilla}.txt")
+    modelo.save_model(arch_modelo)
     
     logger.info(f"Total de modelos entrenados: {len(modelos)}")
 
