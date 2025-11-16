@@ -122,7 +122,7 @@ def main():
                                                                                                          qcanaritos = 5)
 
     modelo_final = entrenar_modelo(lgb_train_final, PARAMETROS_LGBM_Z)
-    generar_predicciones_finales(modelo_final, X_pred, clientes_predict, corte = mejor_corte)
+    generar_predicciones_por_cantidad(modelo_final, X_pred, clientes_predict, corte = mejor_corte)
 
 
 
@@ -159,8 +159,8 @@ def main():
     #ruta_grafico_avanzado = crear_grafico_ganancia_avanzado(y_true=y_test, y_pred_proba=y_pred_prob)
     #logger.info(f"Gráficos generados: {ruta_grafico_avanzado}")
 
-    guardar_predicciones_finales(resultados_df_fijo)
-    guardar_predicciones_finales(resultados_df)
+    #guardar_predicciones_finales(resultados_df_fijo)
+    #guardar_predicciones_finales(resultados_df)
 
 
 
