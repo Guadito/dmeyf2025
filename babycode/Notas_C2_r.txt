@@ -45,5 +45,10 @@ Agregué ensemble random forest de workflow
 sin meses   #202001, 202002, 202003, 202004, 202005, 202006,
 411.599
 
-7) apo-506_g + undersampling 0.5      ---------- en rama temp-08vcpu-128ram-20251116-004232 -. pasado a main
+7) apo-506_h + undersampling 0.5      ---------- en rama temp-08vcpu-128ram-20251116-004232 -. pasado a main
 sin meses   #202001, 202002, 202003, 202004, 202005, 202006,
+407.999
+
+9) apo-506_i : parto del modelo  APO 506_b, que le bajé el undersampling solo para que funcione más rápido + le saqué meses
+y fue el que mejor resultado tuvo en ese nivel de undersampling
+

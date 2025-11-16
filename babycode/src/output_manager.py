@@ -18,6 +18,21 @@ def guardar_resultados_test(resultados_test:dict, archivo_base=None):
     Guarda los resultados de la evaluación en test en un archivo JSON.
     """
 
+    def convertir_a_nativos(obj):
+        if isinstance(obj, dict):
+            return {convertir_a_nativos(k): convertir_a_nativos(v) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [convertir_a_nativos(x) for x in obj]
+        if isinstance(obj, (np.integer, np.floating, np.bool_)):
+            return obj.item()
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return obj
+
+    # Convertir TODO a tipos nativos
+    resultados_test = convertir_a_nativos(resultados_test)
+
+
     if archivo_base is None:
         archivo_base = STUDY_NAME
 
