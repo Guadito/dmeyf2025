@@ -77,12 +77,6 @@ def preparar_datos_final_zlgb(
 
     X_predict = df_pred.drop(['clase_ternaria']).to_pandas()
     clientes_predict = df_pred['numero_de_cliente']
-    
-    vc = df_train['clase_ternaria'].value_counts()
-    for row in vc.to_dicts():
-        clase = row['clase_ternaria']
-        count = row['counts']
-        logger.info(f"  Clase {clase}: {count:,} ({count/len(df_train)*100:.0f}%)")
 
 
     
@@ -297,7 +291,7 @@ def generar_predicciones_por_cantidad(
     modelos: list,
     X_predict: pd.DataFrame,
     clientes_predict: np.ndarray,
-    cantidades: list[int],  
+    corte: int | list = 11000,  
     nombre_base: str = None) -> dict:
     """
     Genera predicciones finales seleccionando un NÚMERO FIJO de clientes
@@ -305,22 +299,43 @@ def generar_predicciones_por_cantidad(
     """
     logger.info(f"Generando predicciones finales por cantidad con {len(modelos)} modelos...")
 
+    if isinstance(corte, int):
+        cortes = [corte]
+    else:
+        cortes = corte
+
     try:
         # Promediar las probabilidades de los modelos y aplicar  cortes por cantidad
         probabilidades_todos = [modelo.predict(X_predict) for modelo in modelos]
         probabilidades_promedio = np.mean(probabilidades_todos, axis=0)
+        
         resultados_por_cantidad = {}
-        for cantidad in cantidades:
+        
+        for cantidad in cortes:
+            
             try:
                 indices_ordenados = np.argsort(probabilidades_promedio)[::-1]
                 indices_top_n = indices_ordenados[:cantidad]
                 pred_bin = np.zeros_like(probabilidades_promedio, dtype=int)
                 pred_bin[indices_top_n] = 1
 
-                resultados_df = pd.DataFrame({
+                # DataFrame solo predicciones
+                df_pred = pd.DataFrame({
                     'numero_de_cliente': clientes_predict,
-                    'Predict': pred_bin
-                })
+                    'Predict': pred_bin})
+
+
+                # DataFrame predicciones + probabilidades
+                df_pred_prob = df_pred.copy()
+                df_pred_prob['Probabilidad'] = probabilidades_promedio
+
+
+                # Guardar ambos CSVs
+                nombre_archivo_pred = f"{nombre_base or STUDY_NAME}_cantidad_{corte}_pred"
+                ruta_pred = guardar_predicciones_finales(df_pred, nombre_archivo=nombre_archivo_pred)
+
+                nombre_archivo_pred_prob = f"{nombre_base or STUDY_NAME}_cantidad_{corte}_pred_prob"
+                ruta_pred_prob = guardar_predicciones_finales(df_pred_prob, nombre_archivo=nombre_archivo_pred_prob)
 
 
                 positivos = int(resultados_df['Predict'].sum())
@@ -332,7 +347,7 @@ def generar_predicciones_por_cantidad(
                 ruta = guardar_predicciones_finales(resultados_df, nombre_archivo=nombre_archivo)
 
                 resultados_por_cantidad[cantidad] = {
-                    'ruta': ruta,
+                    'ruta': ruta_pred,
                     'positivos': positivos,
                     'porcentaje': porcentaje
                 }
@@ -343,7 +358,7 @@ def generar_predicciones_por_cantidad(
 
         return {
             'probabilidades_promedio': probabilidades_promedio,
-            'resultados_por_cantidad': resultados_por_cantidad # <--- CAMBIO 5
+            'resultados_por_cantidad': resultados_por_cantidad
         }
 
     except Exception as e:
