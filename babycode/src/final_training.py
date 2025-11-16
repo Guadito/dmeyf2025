@@ -12,6 +12,7 @@ from .gain_function import *
 from .output_manager import *
 from .loader import convertir_clase_ternaria_a_target_polars
 from .features import *
+from .mid_training import *
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,7 @@ def preparar_datos_final_zlgb(
     df_train = aplicar_undersampling_clase0(df_train, undersampling_0, seed=SEMILLAS[0])
     logger.info(f"Train luego de undersampling: {len(df_train):,}")
 
-    if q_canaritos > 0:
+    if qcanaritos > 0:
         df_train = create_canaritos(df_train, qcanaritos=qcanaritos, seed=SEMILLAS[0])  #ver semilla
         df_pred = create_canaritos(df_pred, qcanaritos=qcanaritos, seed=SEMILLAS[1])
     

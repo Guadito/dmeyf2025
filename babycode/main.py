@@ -25,7 +25,7 @@ logging.getLogger().setLevel(logging.ERROR)
 log_dir = os.path.join(BUCKET_NAME, "log")
 os.makedirs(log_dir, exist_ok=True)
 
-fecha = datetime.now().strftime("%Y-%m-%d %H-%M-%S")
+fecha = datetime.datetime.now().strftime("%Y-%m-%d %H-%M-%S")
 nombre_log = f"log_{STUDY_NAME}_{fecha}.log"
 ruta_log = os.path.join(log_dir, nombre_log)
 
