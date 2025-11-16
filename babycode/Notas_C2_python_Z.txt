@@ -1,0 +1,10 @@
+
+1) Z1  
+undersampling simple 0.5
+base denicolay 
+407.000
+
+2) Z2
+idem
+m_payroll2 / edad
+
