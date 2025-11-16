@@ -4,13 +4,14 @@ import lightgbm as lgb
 import numpy as np
 import logging
 import os
+import polars as pl
 from datetime import datetime
 from .config import FINAL_TRAIN, FINAL_PREDICT, SEMILLAS
 from .best_params import *
 from .gain_function import *
 from .output_manager import *
 from .loader import convertir_clase_ternaria_a_target_polars
-import polars as pl
+from .features import *
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,7 @@ def preparar_datos_final_zlgb(
     else:
         df_train = df.filter(pl.col('foto_mes') == training)
 
-    if isinstance(validation, list):
+    if isinstance(predict, list):
         df_pred = df.filter(pl.col('foto_mes').is_in(predict))
     else:
         df_pred = df.filter(pl.col('foto_mes') == predict)

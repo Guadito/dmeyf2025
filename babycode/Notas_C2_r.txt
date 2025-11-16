@@ -33,7 +33,7 @@ dataset[, active_quarter := NULL ]
 sin meses   #202001, 202002, 202003, 202004, 202005, 202006,
 quito esta variable: 
 dataset[, ctrx_quarter := NULL]
-
+401.599
 
 
 
