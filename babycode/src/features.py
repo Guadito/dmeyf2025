@@ -421,27 +421,22 @@ def aplicar_undersampling_clase0(
     seed: int = 42
 ) -> pl.DataFrame:
     """
-    Undersampling simple: reduce la cantidad de filas con clase 0.
-    Mantiene todas las filas con clase 1 y 2.
+    Undersampling usando un solo paso, sin copias intermedias.
     """
 
-    df_0 = df.filter(pl.col(target_col) == 0)
-    df_not_0 = df.filter(pl.col(target_col) != 0)
-
-    total_0 = df_0.height
-    sample_size = int(total_0 * undersampling)
-
-    df_0_sampled = (
-        df_0.sample(n=sample_size, seed=seed)
-        if sample_size < total_0
-        else df_0)
-
-    df_final = pl.concat([df_not_0, df_0_sampled])
-
+    # Crear máscara booleana
+    np.random.seed(seed)
+    mask = (df[target_col] != 0) | (np.random.random(df.height) < undersampling)
+    
+    df_final = df.filter(mask)
+    
+    total_0_original = (df[target_col] == 0).sum()
+    total_0_final = (df_final[target_col] == 0).sum()
+    
     logger.info(
         f"Undersampling clase 0: {undersampling:.0%} "
-        f"({sample_size}/{total_0} filas clase 0 conservadas)")
-
+        f"({total_0_final}/{total_0_original} filas clase 0 conservadas)")
+    
     return df_final
 
 
