@@ -50,6 +50,8 @@ sin meses   #202001, 202002, 202003, 202004, 202005, 202006,
 407.999
 
 9) apo-506_i : parto del modelo  APO 506_b
-
+undersampling default 
+sin meses pandemia
+agrego zero_replace para reemplazar los meses que son todo 0 con nan
 
 
