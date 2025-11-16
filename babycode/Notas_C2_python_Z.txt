@@ -6,5 +6,5 @@ base denicolay
 
 2) Z2
 idem
-m_payroll2 / edad
+montos / edad
 

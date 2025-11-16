@@ -83,9 +83,10 @@ def main():
     
     df_f = normalizar_ctrx_quarter(df_f)
     logger.info(f"✓ Datos luego de normalización ctrx_quarter: {df_f.shape}")
-    
-    col = ['mpayroll', 'mpayroll_2']
-    df_f = generar_sobre_edad(df_f, col)
+
+    col_montos = select_col_montos(df_f)
+    #col = ['mpayroll', 'mpayroll_2']
+    df_f = generar_sobre_edad(df_f, col_montos)
     logger.info(f"✓ Datos agregando quarter/edad: {df_f.shape}")
 
     col = [c for c in df_f.columns if c not in ['numero_de_cliente', 'foto_mes', 'clase_ternaria']]
