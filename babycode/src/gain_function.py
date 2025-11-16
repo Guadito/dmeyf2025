@@ -193,14 +193,19 @@ def calcular_ganancias_por_corte(y_pred_proba: np.ndarray, y_true: np.ndarray, c
     
     # Calcular ganancias para cada corte
     ganancias = []
+    print("------------------------")
+    print("Corte | Ganancia acumulada")
     for k in cortes:
         idx = k - 1
         if 0 <= idx < len(ganancia_array):
-            ganancias.append(ganancia_array[idx])
+            g = ganancia_array[idx]
+            ganancias.append(g)
+            print(f"{k:5d} | {g:15d}")
         else:
             logger.warning(f"Corte {k} fuera de rango (len={len(ganancia_array)}), se omite")
             ganancias.append(np.nan)
-    
+
+    print("------------------------")
     return ganancias
 
 
