@@ -66,7 +66,7 @@ def main():
     df_f = crear_clase_ternaria(df_f)    
 
     #SAMPLE
-    #n_sample = 10000
+    #n_sample = 100000
     #df_f, _ = train_test_split(
     #    df_f,
     #    train_size=n_sample,
