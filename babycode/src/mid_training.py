@@ -97,7 +97,7 @@ def preparar_datos_training_lgb(
 
     
     logger.info(f"Tamaño original train: {len(df_train):,} | "f"Períodos train: {training}")
-    logger.info(f"Tamaño val: {len(df_val):,} | "f"Períodos val: {validation}")
+    logger.info(f"Tamaño test: {len(df_val):,} | "f"Períodos test: {validation}")
 
 
     if df_train.is_empty():
@@ -118,10 +118,10 @@ def preparar_datos_training_lgb(
     
     logger.info(f"Canaritos creados en train y test: {qcanaritos}")
     
-    X_train = df_train.drop('clase_ternaria')
+    X_train = df_train.drop('clase_ternaria').to_pandas()
     y_train = df_train['clase_ternaria'].to_numpy()
 
-    X_val = df_val.drop('clase_ternaria')
+    X_val = df_val.drop('clase_ternaria').to_pandas()
     y_val = df_val['clase_ternaria'].to_numpy()
 
     logger.info("Distribución training:")
@@ -133,7 +133,7 @@ def preparar_datos_training_lgb(
         logger.info(f"  Clase {clase}: {count:,} ({count/len(df_val)*100:.0f}%)")
 
 
-    lgb_train = lgb.Dataset(X_train.to_pandas(), label=y_train)
+    lgb_train = lgb.Dataset(X_train, label=y_train)
     #lgb_val = lgb.Dataset(X_val.to_pandas(), label=y_val, reference=lgb_train)
 
     
@@ -155,25 +155,18 @@ def entrenar_modelo(lgb_train: lgb.Dataset, params: dict) -> list:
     Returns:
         list: Lista de modelos entrenados
     """
-    logger.info("Iniciando entrenamiento de modelo")
-    
     modelos = []
-    #semillas = SEMILLAS[0]
-    
-    #for idx, semilla in enumerate(semillas):
-        logger.info(f"Entrenando modelo")
-        
-        # Configurar parámetros con la semilla actual
-        params = params
 
-        # Entrenar modelo
-        modelo = lgb.train(
-            params,
-            lgb_train
+    logger.info(f"Entrenando modelo")
+
+    # Entrenar modelo
+    modelo = lgb.train(
+        params,
+        lgb_train
         )
         
-        modelos.append(modelo)
-        logger.info(f"Modelo {idx+1} entrenado exitosamente")
+    modelos.append(modelo)
+    logger.info(f"Modelo entrenado exitosamente")
     
     logger.info(f"Total de modelos entrenados: {len(modelos)}")
 
@@ -228,10 +221,10 @@ def evaluar_en_test(modelos: list, X_test: pd.DataFrame, y_test: pd.Series,
     })
 
     # Métricas
-    tp = np.sum((y_pred_binary_mejor == 1) & (y_test.to_numpy() == 1))
-    fp = np.sum((y_pred_binary_mejor == 1) & (y_test.to_numpy() == 0))
-    tn = np.sum((y_pred_binary_mejor == 0) & (y_test.to_numpy() == 0))
-    fn = np.sum((y_pred_binary_mejor == 0) & (y_test.to_numpy() == 1))
+    tp = np.sum((y_pred_binary_mejor == 1) & (y_test == 1))
+    fp = np.sum((y_pred_binary_mejor == 1) & (y_test == 0))
+    tn = np.sum((y_pred_binary_mejor == 0) & (y_test == 0))
+    fn = np.sum((y_pred_binary_mejor == 0) & (y_test == 1))
     precision = tp / (tp + fp + 1e-10)
     recall = tp / (tp + fn + 1e-10)
     accuracy = (tp + tn) / len(y_test)

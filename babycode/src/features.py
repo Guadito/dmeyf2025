@@ -391,7 +391,7 @@ def aplicar_undersampling_clase0(
     # Si sample_size es 0, devolver solo los que tienen clase 1
     if sample_size == 0:
         result = df.join(ids_ever_1, on=id_col, how="inner")
-        logger.info(f"Undersampling clase 0: {undersampling:.2%} (semilla={seed}) — solo clientes con clase 1")
+        logger.info(f"Undersampling clase 0: {undersampling:.0%} (semilla={seed}) — solo clientes con clase 1")
         return result
 
     np.random.seed(seed)
@@ -408,8 +408,7 @@ def aplicar_undersampling_clase0(
     # Filtrar el dataset original
     result = df.join(ids_to_keep, on=id_col, how="inner")
 
-    logger.info(f"Undersampling clase 0: {undersampling:.2%} (semilla={seed}) "
-                f"— {sample_size} de {n_never_1} clientes 'never_1' conservados")
+    logger.info(f"Tamaño del undersampling a clase CONTINUA: {undersampling:.0%} (semilla={seed}) ")
 
     return result
 

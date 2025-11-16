@@ -21,7 +21,8 @@ def preparar_datos_final_zlgb(
         df: pl.DataFrame,
         training: list | int,
         predict: list | int,
-        undersampling_0: int = 1
+        undersampling_0: int = 1,
+        qcanaritos:int = 0
     ):
     """
     Prepara datos finales para LightGBM
@@ -69,7 +70,7 @@ def preparar_datos_final_zlgb(
         df_train = create_canaritos(df_train, qcanaritos=qcanaritos, seed=SEMILLAS[0])  #ver semilla
         df_pred = create_canaritos(df_pred, qcanaritos=qcanaritos, seed=SEMILLAS[1])
     
-    X_train = df_train.drop('clase_ternaria')
+    X_train = df_train.drop('clase_ternaria').to_pandas()
     y_train = df_train['clase_ternaria'].to_numpy()
 
     X_predict = df_pred.drop(columns = ['clase_ternaria'])
@@ -80,7 +81,7 @@ def preparar_datos_final_zlgb(
         logger.info(f"  Clase {clase}: {count:,} ({count/len(df_train)*100:.0f}%)")
 
     
-    lgb_train = lgb.Dataset(X_train.to_pandas(), label=y_train)
+    lgb_train = lgb.Dataset(X_train, label=y_train)
     #lgb_val = lgb.Dataset(X_val.to_pandas(), label=y_val, reference=lgb_train)
 
     
