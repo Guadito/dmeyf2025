@@ -96,8 +96,8 @@ def preparar_datos_training_lgb(
         df_val = df.filter(pl.col('foto_mes') == validation)
 
     
-    logger.info(f"Tamaño original train: {len(df_train):,} | "f"Períodos train: {training}")
-    logger.info(f"Tamaño test: {len(df_val):,} | "f"Períodos test: {validation}")
+    logger.info(f"Train shape: {df_train.shape[0]:,} filas × {df_train.shape[1]:,} columnas | "f"Períodos train: {training}")
+    logger.info(f"Test shape: {df_val.shape[0]:,} filas × {df_val.shape[1]:,} columnas | "f"Períodos test: {validation}")
 
 
     if df_train.is_empty():
@@ -127,6 +127,8 @@ def preparar_datos_training_lgb(
     logger.info("Distribución training:")
     for clase, count in df_train['clase_ternaria'].value_counts().iter_rows():
         logger.info(f"  Clase {clase}: {count:,} ({count/len(df_train)*100:.0f}%)")
+    
+
 
     logger.info("Distribución validation:")
     for clase, count in df_val['clase_ternaria'].value_counts().iter_rows():

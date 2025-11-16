@@ -52,9 +52,9 @@ def preparar_datos_final_zlgb(
     else:
         df_pred = df.filter(pl.col('foto_mes') == predict)
 
-    
-    logger.info(f"Tamaño original train: {len(df_train):,} | "f"Períodos train: {training}")
-    logger.info(f"Tamaño val: {len(df_pred):,} | "f"Períodos val: {predict}")
+
+    logger.info(f"Train shape: {df_train.shape[0]:,} filas × {df_train.shape[1]:,} columnas | "f"Períodos train: {training}")
+    logger.info(f"Pred shape: {df_pred.shape[0]:,} filas × {df_pred.shape[1]:,} columnas | "f"Períodos test: {predict}")
 
 
     if df_train.is_empty():
