@@ -12,7 +12,6 @@ saco variables
 
 
 3) APO 506_b + undersampling default
-saco meses  #202001, 202002, 202003, 202004, 202005, 202006,   <---- TODO INDICA QUE FUNCIONA MEJOR SIN ESTOS MESES
 403.199 corte 10.000
 
 4) APO 506_c + undersampling default
@@ -53,5 +52,5 @@ sin meses   #202001, 202002, 202003, 202004, 202005, 202006,
 undersampling default 
 sin meses pandemia
 agrego zero_replace para reemplazar los meses que son todo 0 con nan
-
+401.999
 

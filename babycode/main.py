@@ -112,6 +112,7 @@ def main():
                                                                                 validation=validation, 
                                                                                 undersampling_0= 0.05,
                                                                                 qcanaritos = 5)
+    
 
 
     modelo = entrenar_modelo(lgb_train, PARAMETROS_LGBM_Z)
