@@ -41,5 +41,5 @@ Dejé todas las variables por default.
 Agregué ensemble random forest de workflow
 
 
-6) apo-506_g + undersampling 0.2      ---------- en rama 
+6) apo-506_g + undersampling 0.2      ---------- en rama temp-08vcpu-128ram-20251116-004232
 sin meses   #202001, 202002, 202003, 202004, 202005, 202006,
