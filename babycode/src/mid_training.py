@@ -213,7 +213,24 @@ def evaluar_en_test(modelos: list, X_test: pd.DataFrame, y_test: pd.Series,
     mejor_corte = cortes[mejor_corte_idx]
     mejor_ganancia = ganancias_por_corte[mejor_corte_idx]
 
+    logger.info("\n" + "=" * 80)
+    logger.info("RESULTADOS POR CORTE:")
+    logger.info("=" * 80)
+    for corte, ganancia in zip(cortes, ganancias_por_corte):
+        marcador = " MEJOR" if corte == mejor_corte else ""
+        # Convertir explícitamente a float/int de Python
+        corte_val = int(corte)
+        ganancia_val = float(ganancia)
+        logger.info(f"  Corte {corte_val:6d}: Ganancia = {ganancia_val:12,.0f}{marcador}")
+    
+    logger.info("\n" + "=" * 80)
+    logger.info(f"MEJOR CORTE: {int(mejor_corte):,} envíos")
+    logger.info(f"MEJOR GANANCIA: ${float(mejor_ganancia):,.0f}")
+    logger.info("=" * 80)
+    
+
     # Corte fijo
+    logger.info(f"\nEvaluando con corte fijo: {corte_fijo:,}")
     indices_top_fijo = np.argsort(y_pred_promedio)[-corte_fijo:]
     y_pred_binary_fijo = np.zeros_like(y_pred_promedio, dtype=int)
     y_pred_binary_fijo[indices_top_fijo] = 1
@@ -223,6 +240,7 @@ def evaluar_en_test(modelos: list, X_test: pd.DataFrame, y_test: pd.Series,
     })
 
     # Mejor corte
+    logger.info(f"Generando predicciones con mejor corte: {mejor_corte:,}")
     indices_top_mejor = np.argsort(y_pred_promedio)[-mejor_corte:]
     y_pred_binary_mejor = np.zeros_like(y_pred_promedio, dtype=int)
     y_pred_binary_mejor[indices_top_mejor] = 1
