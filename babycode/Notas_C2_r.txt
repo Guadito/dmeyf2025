@@ -54,3 +54,15 @@ sin meses pandemia
 agrego zero_replace para reemplazar los meses que son todo 0 con nan
 401.999
 
+10) apo-506_j
+parto del modelo APO 506_b
+undersampling default
+sin meses pandemia
+hago ranking -1 0 1 
+397.599
+
+11) apo-506_k
+hago ratio de columnas de montos y edad. 
+
+    
+
