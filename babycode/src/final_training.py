@@ -76,9 +76,7 @@ def preparar_datos_final_zlgb(
     y_train = df_train['clase_ternaria'].to_numpy()
 
     X_predict = df_pred.drop(['clase_ternaria']).to_pandas()
-    clientes_predict = df_pred['numero_de_cliente']
-
-
+    clientes_predict = df_pred['numero_de_cliente'].to_pandas()
     
     lgb_train = lgb.Dataset(X_train, label=y_train)
     #lgb_val = lgb.Dataset(X_val.to_pandas(), label=y_val, reference=lgb_train)
@@ -331,20 +329,17 @@ def generar_predicciones_por_cantidad(
 
 
                 # Guardar ambos CSVs
-                nombre_archivo_pred = f"{nombre_base or STUDY_NAME}_cantidad_{corte}_pred"
+                nombre_archivo_pred = f"{nombre_base or STUDY_NAME}_cantidad_{cantidad}_pred"
                 ruta_pred = guardar_predicciones_finales(df_pred, nombre_archivo=nombre_archivo_pred)
 
-                nombre_archivo_pred_prob = f"{nombre_base or STUDY_NAME}_cantidad_{corte}_pred_prob"
+                nombre_archivo_pred_prob = f"{nombre_base or STUDY_NAME}_cantidad_{cantidad}_pred_prob"
                 ruta_pred_prob = guardar_predicciones_finales(df_pred_prob, nombre_archivo=nombre_archivo_pred_prob)
 
 
-                positivos = int(resultados_df['Predict'].sum())
-                porcentaje = round((positivos / len(resultados_df)) * 100, 2)
-                logger.info(f"Cantidad {cantidad}, {positivos:,} positivos ({porcentaje:.2f}%)") # <--- CAMBIO 3
+                positivos = int(df_pred['Predict'].sum())
+                porcentaje = round((positivos / len(df_pred)) * 100, 2)
+                logger.info(f"Cantidad {cantidad}, {positivos:,} positivos ({porcentaje:.2f}%)") 
 
-                # Guardar resultados en CSV
-                nombre_archivo = f"{nombre_base or STUDY_NAME}_cantidad_{cantidad}" # <--- CAMBIO 4
-                ruta = guardar_predicciones_finales(resultados_df, nombre_archivo=nombre_archivo)
 
                 resultados_por_cantidad[cantidad] = {
                     'ruta': ruta_pred,
