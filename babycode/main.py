@@ -66,12 +66,12 @@ def main():
     df_f = crear_clase_ternaria(df_f)    
 
     #SAMPLE
-    #n_sample = 100000
-    #df_f, _ = train_test_split(
-    #    df_f,
-    #    train_size=n_sample,
-    #    stratify=df_f['clase_ternaria'],
-    #    random_state=42)
+    n_sample = 100000
+    df_f, _ = train_test_split(
+        df_f,
+        train_size=n_sample,
+        stratify=df_f['clase_ternaria'],
+        random_state=42)
 
 
     cols_to_drop = ['mprestamos_personales', 'cprestamos_personales']  #'active_quarter', 'cprestamos_prendarios','mprestamos_prendarios', 'mpayroll_2', 'mpayroll_2', 'visa_cadelantosefectivo' ,'ctrx_quarter' 'cdescubierto_preacordado'

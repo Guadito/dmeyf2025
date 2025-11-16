@@ -423,10 +423,15 @@ def aplicar_undersampling_clase0(
     """
     Undersampling usando solo Polars.
     """
-    # Agregar columna aleatoria y filtrar en una expresión
+    
+    # Generar números aleatorios con NumPy
+    np.random.seed(seed)
+    random_values = np.random.random(df.height)
+    
+    # Filtrar usando Polars
     df_final = (
         df.with_columns(
-            pl.lit(1.0).shuffle(seed=seed).alias("_rand")
+            pl.Series("_rand", random_values)
         )
         .filter(
             (pl.col(target_col) != 0) | 
@@ -443,7 +448,6 @@ def aplicar_undersampling_clase0(
         f"({total_0_final}/{total_0_original} filas clase 0 conservadas)")
     
     return df_final
-
 
 #--------------->
 
