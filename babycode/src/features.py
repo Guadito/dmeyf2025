@@ -421,17 +421,22 @@ def aplicar_undersampling_clase0(
     seed: int = 42
 ) -> pl.DataFrame:
     """
-    Undersampling usando un solo paso, sin copias intermedias.
+    Undersampling usando solo Polars.
     """
-
-    # Crear máscara booleana
-    np.random.seed(seed)
-    mask = (df[target_col] != 0) | (np.random.random(df.height) < undersampling)
+    # Agregar columna aleatoria y filtrar en una expresión
+    df_final = (
+        df.with_columns(
+            pl.lit(1.0).shuffle(seed=seed).alias("_rand")
+        )
+        .filter(
+            (pl.col(target_col) != 0) | 
+            (pl.col("_rand") < undersampling)
+        )
+        .drop("_rand")
+    )
     
-    df_final = df.filter(mask)
-    
-    total_0_original = (df[target_col] == 0).sum()
-    total_0_final = (df_final[target_col] == 0).sum()
+    total_0_original = df.filter(pl.col(target_col) == 0).height
+    total_0_final = df_final.filter(pl.col(target_col) == 0).height
     
     logger.info(
         f"Undersampling clase 0: {undersampling:.0%} "
