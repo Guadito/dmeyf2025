@@ -69,25 +69,29 @@ def preparar_datos_final_zlgb(
     logger.info(f"Train luego de undersampling: {len(df_train):,}")
 
     if qcanaritos > 0:
-        df_train = create_canaritos(df_train, qcanaritos=qcanaritos, seed=SEMILLAS[0])  #ver semilla
-        df_pred = create_canaritos(df_pred, qcanaritos=qcanaritos, seed=SEMILLAS[1])
+        df_train = create_canaritos(df_train, qcanaritos=qcanaritos)  #ver semilla
+        df_pred = create_canaritos(df_pred, qcanaritos=qcanaritos)
     
-    X_train = df_train.drop('clase_ternaria').to_pandas()
+    X_train = df_train.drop({'clase_ternaria'}).to_pandas()
     y_train = df_train['clase_ternaria'].to_numpy()
 
-    X_predict = df_pred.drop(columns = ['clase_ternaria'])
+    X_predict = df_pred.drop(['clase_ternaria']).to_pandas()
     clientes_predict = df_pred['numero_de_cliente']
     
-    logger.info("Distribución training:")
-    for clase, count in df_train['clase_ternaria'].value_counts().iter_rows():
+    vc = df_train['clase_ternaria'].value_counts()
+    for row in vc.to_dicts():
+        clase = row['clase_ternaria']
+        count = row['counts']
         logger.info(f"  Clase {clase}: {count:,} ({count/len(df_train)*100:.0f}%)")
+
 
     
     lgb_train = lgb.Dataset(X_train, label=y_train)
     #lgb_val = lgb.Dataset(X_val.to_pandas(), label=y_val, reference=lgb_train)
 
     
-    return lgb_train, X_train, y_train, X_pred, clientes_predict
+    return lgb_train, X_train, y_train, X_predict, clientes_predict
+
 
 #------------------------------> preparar datos optuna
 

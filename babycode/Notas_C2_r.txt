@@ -35,5 +35,11 @@ quito esta variable:
 dataset[, ctrx_quarter := NULL]
 401.599
 
+5) apo-506_f + undersampling default
+sin meses   #202001, 202002, 202003, 202004, 202005, 202006,
+Dejé todas las variables por default. 
+Agregué ensemble random forest de workflow
 
 
+6) apo-506_g + undersampling 0.2      ---------- en rama 
+sin meses   #202001, 202002, 202003, 202004, 202005, 202006,

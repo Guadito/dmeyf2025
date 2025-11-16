@@ -113,7 +113,6 @@ def main():
 
 
     #3 - entrenar el modelo final y predecir
-    
     training = FINAL_TRAIN
     predict = FINAL_PREDICT
     lgb_train_final, X_train_final, y_train_final, X_pred, clientes_predict = preparar_datos_final_zlgb (df_f, 
