@@ -651,7 +651,7 @@ def eliminar_meses_df(df, col='foto_mes', mes_inicio=202003, mes_fin=202007):
 
 # --------------------------> Eliminar meses de lista
 
-def eliminar_meses_de_lista(meses, mes_inicio, mes_fin):
+def eliminar_meses_lista(meses, mes_inicio, mes_fin):
     """
     Devuelve una lista con todos los meses excepto los que están
     en el rango [mes_inicio, mes_fin].

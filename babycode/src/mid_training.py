@@ -145,14 +145,15 @@ def preparar_datos_training_lgb(
 
 # -------------------> zlightgbm
 
-def entrenar_modelo(lgb_train: lgb.Dataset, params: dict) -> list:
+def entrenar_modelo(lgb_train: lgb.Dataset, params: dict, tipo: str = None) -> list:
     """
     Entrena un modelo con diferentes semillas.
     
     Args:
         X_train: Features de entrenamiento
         y_train: Target de entrenamiento
-        mejores_params: Mejores hiperparámetros de Optuna
+        params: Hiperparámetros
+        Tipo: cadena para identificar el modelo
     
     Returns:
         list: Lista de modelos entrenados
@@ -176,7 +177,7 @@ def entrenar_modelo(lgb_train: lgb.Dataset, params: dict) -> list:
     study_name = STUDY_NAME
 
     semilla = params.get("seed", "NO_SEED")
-    arch_modelo = os.path.join(path_db, f"mod_{study_name}_{semilla}.txt")
+    arch_modelo = os.path.join(path_db, f"mod_{study_name}_{tipo}_{semilla}.txt")
     modelo.save_model(arch_modelo)
     
     logger.info(f"Total de modelos entrenados: {len(modelos)}")

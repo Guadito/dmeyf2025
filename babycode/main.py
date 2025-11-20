@@ -108,7 +108,7 @@ def main():
 
     
     #2 - entrenar el modelo y evaluar ganancias
-    training = MES_TRAIN
+    training = (eliminar_meses_lista(MES_TRAIN, mes_inicio=202001, mes_fin=202006)
     validation = MES_TEST
     lgb_train, X_train, y_train, X_val, y_val = preparar_datos_training_lgb(df_f, 
                                                                                 training=training, 
@@ -118,13 +118,13 @@ def main():
     
 
 
-    modelo = entrenar_modelo(lgb_train, PARAMETROS_LGBM_Z)
+    modelo = entrenar_modelo(lgb_train, PARAMETROS_LGBM_Z, tipo="intermedio")
     cortes = [9000, 9500, 10000, 10500, 11000, 11500, 12000, 12500, 13000, 13500]
     _,_,_,_,_,_,mejor_corte = evaluar_en_test(modelo, X_val, y_val, cortes=cortes, corte_fijo= 11000)
 
 
     #3 - entrenar el modelo final y predecir
-    training = FINAL_TRAIN
+    training =  (eliminar_meses_lista(FINAL_TRAIN, mes_inicio=202001, mes_fin=202006)
     predict = FINAL_PREDICT
     lgb_train_final, X_train_final, y_train_final, X_pred, clientes_predict = preparar_datos_final_zlgb (df_f, 
                                                                                                          training=training, 
@@ -132,7 +132,7 @@ def main():
                                                                                                          undersampling_0= 0.2,
                                                                                                          qcanaritos = 5)
 
-    modelo_final = entrenar_modelo(lgb_train_final, PARAMETROS_LGBM_Z)
+    modelo_final = entrenar_modelo(lgb_train_final, PARAMETROS_LGBM_Z, tipo="final")
     generar_predicciones_por_cantidad(modelo_final, X_pred, clientes_predict, corte = mejor_corte)
 
 
