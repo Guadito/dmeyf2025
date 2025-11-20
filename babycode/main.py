@@ -84,8 +84,8 @@ def main():
     df_f = normalizar_ctrx_quarter(df_f)
     logger.info(f"✓ Datos luego de normalización ctrx_quarter: {df_f.shape}")
 
-    col_montos = select_col_montos(df_f)
-    #col = ['mpayroll', 'mpayroll_2']
+    #col_montos = select_col_montos(df_f)
+    col = ['mpayroll']
     df_f = generar_sobre_edad(df_f, col_montos)
     logger.info(f"✓ Datos agregando quarter/edad: {df_f.shape}")
 
@@ -104,14 +104,16 @@ def main():
     #df_f = feature_engineering_rank_neg_batch(df_f, col_montos)
     
 
+    
 
+    
     #2 - entrenar el modelo y evaluar ganancias
     training = MES_TRAIN
     validation = MES_TEST
     lgb_train, X_train, y_train, X_val, y_val = preparar_datos_training_lgb(df_f, 
                                                                                 training=training, 
                                                                                 validation=validation, 
-                                                                                undersampling_0= 0.05,
+                                                                                undersampling_0= 0.2,
                                                                                 qcanaritos = 5)
     
 
@@ -127,15 +129,11 @@ def main():
     lgb_train_final, X_train_final, y_train_final, X_pred, clientes_predict = preparar_datos_final_zlgb (df_f, 
                                                                                                          training=training, 
                                                                                                          predict=predict, 
-                                                                                                         undersampling_0= 0.05,
+                                                                                                         undersampling_0= 0.2,
                                                                                                          qcanaritos = 5)
 
     modelo_final = entrenar_modelo(lgb_train_final, PARAMETROS_LGBM_Z)
     generar_predicciones_por_cantidad(modelo_final, X_pred, clientes_predict, corte = mejor_corte)
-
-
-
-
 
 
 

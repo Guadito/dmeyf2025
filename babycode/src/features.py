@@ -623,7 +623,7 @@ def zero_replace(df: pl.DataFrame, group_col: str = "foto_mes") -> pl.DataFrame:
     return df.with_columns(exprs)
 
 
-# -------------------------------> Eliminar meses
+# -------------------------------> Elegir rango de meses
 
 def filtrar_meses(df, col='foto_mes', mes_inicio=202003, mes_fin=202007):
     """
@@ -634,6 +634,29 @@ def filtrar_meses(df, col='foto_mes', mes_inicio=202003, mes_fin=202007):
     
     # Filtramos y devolvemos
     return df.loc[mask].copy()
+
+# ----------------------------> Eliminar meses
+
+def eliminar_meses_df(df, col='foto_mes', mes_inicio=202003, mes_fin=202007):
+    """
+    Devuelve un DataFrame eliminando las filas cuyos meses estén dentro
+    del rango [mes_inicio, mes_fin].
+    """
+    # Mask booleana: True si el mes está fuera del rango
+    mask = (df[col] < mes_inicio) | (df[col] > mes_fin)
+    
+    # Filtramos y devolvemos lo que queda
+    return df.loc[mask].copy()
+
+
+# --------------------------> Eliminar meses de lista
+
+def eliminar_meses_de_lista(meses, mes_inicio, mes_fin):
+    """
+    Devuelve una lista con todos los meses excepto los que están
+    en el rango [mes_inicio, mes_fin].
+    """
+    return [m for m in meses if not (mes_inicio <= m <= mes_fin)]
 
 
 # -------------------> Neutralizacion de columnas
