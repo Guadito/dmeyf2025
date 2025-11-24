@@ -20,7 +20,8 @@ try:
     #Configuración global del proyecto
     STUDY_NAME = _cfgGeneral.get("STUDY_NAME", None)
     DATA_PATH_BASE_NT = _cfg.get("DATA_PATH_BASE_NT", "C:\\Users\\Guada\\Desktop\\babycode\\datasets\\competencia_01_crudo.csv")
-    DATA_PATH_BASE_VM = _cfg.get("DATA_PATH_BASE_VM", "../datasets/competencia_01_crudo.csv")
+    DATA_PATH_BASE_VM = _cfg.get("DATA_PATH_BASE_VM")
+    DATA_PATH_BASE_VM2 = _cfg.get("DATA_PATH_BASE_VM2")
     DATA_PATH_TRANS_VM = _cfg.get("DATA_PATH_TRANS_VM", "../datasets/competencia_01_crudo.csv")
     BUCKET_NAME = _cfgGeneral.get("BUCKET_NAME", None)
     SEMILLAS = _cfg.get("SEMILLAS", [42])

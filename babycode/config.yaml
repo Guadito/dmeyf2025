@@ -31,6 +31,7 @@ params_lgb:
 competencia02:
             DATA_PATH_BASE_NT: "C:\\Users\\Guada\\Desktop\\babycode\\datasets\\competencia_02_crudo.csv"
             DATA_PATH_BASE_VM: '/home/guadalesandro/buckets/b1/datasets/competencia_02_crudo.csv.gz'
+            DATA_PATH_BASE_VM2: '/home/guadalesandro/buckets/b1/datasets/competencia_03_crudo.csv.gz'
             DATA_PATH_TRANS_VM: '/home/guadalesandro/buckets/b2'
             SEMILLAS: [111119, 111121, 599999, 666667, 888887]
             #MES_TRAIN: [201901, 201902, 201903, 201904, 201905, 201906,

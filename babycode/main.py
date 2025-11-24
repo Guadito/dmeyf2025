@@ -47,7 +47,7 @@ logger.info("Iniciando programa de optimización con log fechado")
 logger.info("Configuración cargada desde YAML")
 logger.info(f"STUDY_NAME: {STUDY_NAME}")
 logger.info(f"DT crudo DATA_PATH_BASE_VM: {DATA_PATH_BASE_VM}")
-logger.info(f"DT transformado DATA_PATH_2: {DATA_PATH_TRANS_VM}")
+logger.info(f"DT crudo anexo: {DATA_PATH_BASE_VM2}")
 logger.info(f"BUCKET_NAME: {BUCKET_NAME}")
 logger.info(f"SEMILLAS: {SEMILLAS}")
 logger.info(f"MES_TRAIN: {MES_TRAIN}")
@@ -63,7 +63,10 @@ def main():
     logger.info("Inicio de ejecucion.")
     
     # 1- cargar datos 
-    df_f = cargar_datos(DATA_PATH_BASE_VM)
+    df_fa = cargar_datos(DATA_PATH_BASE_VM)
+    df_fb = cargar_datos(DATA_PATH_BASE_VM2)
+    df_f = pl.concat([df_fa, df_fb], how="vertical")
+    
     df_f = crear_clase_ternaria(df_f)    
 
     #SAMPLE
