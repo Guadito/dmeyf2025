@@ -86,8 +86,8 @@ def main():
     logger.info(f"✓ Datos luego de normalización ctrx_quarter: {df_f.shape}")
 
     #col_montos = select_col_montos(df_f)
-    col = ['mpayroll']
-    df_f = generar_sobre_edad(df_f, col_montos)
+    col_p = ['mpayroll']
+    df_f = generar_sobre_edad(df_f, col_p)
     logger.info(f"✓ Datos agregando quarter/edad: {df_f.shape}")
 
     col = [c for c in df_f.columns if c not in ['numero_de_cliente', 'foto_mes', 'clase_ternaria']]
@@ -95,8 +95,9 @@ def main():
     cols_to_drop = ['periodo0']
     df_f = drop_columns(df_f, cols_to_drop)
     logger.info(f"✓ Datos luego de agregar lags: {df_f.shape}")
-    
-    df_df = tendencia_polars(df_f, col, ventana=6, tendencia=True, minimo=False, maximo=False, promedio=False)
+
+
+    df_df = tendencia_polars(df_f, col, ventana=6, tendencia=True, minimo=False, maximo=False, promedio=False, ratioavg=False, ratiomax=False)
     logger.info(f"✓ Datos luego de agregar tendencias: {df_f.shape}")
     
     #df_f = zero_replace(df_f)
