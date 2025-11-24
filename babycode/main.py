@@ -64,8 +64,9 @@ def main():
     
     # 1- cargar datos 
     df_fa = cargar_datos(DATA_PATH_BASE_VM)
-    df_fb = cargar_datos(DATA_PATH_BASE_VM2)
-    df_f = pl.concat([df_fa, df_fb], how="vertical")
+    df_f = df_fa
+    #df_fb = cargar_datos(DATA_PATH_BASE_VM2)
+    #df_f = pl.concat([df_fa, df_fb], how="vertical")
     
     df_f = crear_clase_ternaria(df_f)    
 
