@@ -14,6 +14,7 @@ from src.best_params import *
 from src.grafico_test import *
 from src.final_training import *
 from src.kaggle import *
+from src.fe_tendencias import *
 import gc
 from pathlib import Path
 import numpy as np

@@ -833,7 +833,7 @@ def generar_seeds(semilla_primigenia: int, cantidad: int = 1,
 
 # -------------------> funcion tendencias
 
-def tendencia_polars(df, cols, ventana=6, tendencia=True, minimo=True, maximo=True, promedio=True):
+def tendencia_polars_v1(df, cols, ventana=6, tendencia=True, minimo=True, maximo=True, promedio=True):
     """
     Versión optimizada para datasets grandes.
     """
