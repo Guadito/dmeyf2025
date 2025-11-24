@@ -1,15 +1,21 @@
 import polars as pl
 import numpy as np
+from numba import njit
 
 def calcular_vector_desde(df, ventana):
     n = df.height
     ids = df["numero_de_cliente"].to_numpy()
-    desde = np.arange(-ventana + 2, n - ventana + 2)
-    desde[:ventana] = 1
+    
+    desde = np.zeros(n, dtype=np.int64)
+    for i in range(n):
+        desde[i] = i - ventana + 2
+        
+    for i in range(min(n, ventana)):
+        desde[i] = 1
 
     for i in range(1, n):
         if ids[i-1] != ids[i]:
-            desde[i] = i+1
+            desde[i] = i + 1
 
     for i in range(1, n):
         if desde[i] < desde[i-1]:
@@ -18,17 +24,18 @@ def calcular_vector_desde(df, ventana):
     return desde
 
 
-def fhistC_py(columna, desde):
-    columna = np.array(columna, dtype=float)
-    desde = np.array(desde, dtype=int)
+
+@njit
+def fhistC_py_numba(columna, desde):
     n = len(columna)
 
-    out = np.full(5*n, np.nan, dtype=float)
-    x = np.zeros(100, dtype=float)
-    y = np.zeros(100, dtype=float)
+    out = np.full(5*n, np.nan, dtype=np.float64)
+    x = np.zeros(100, dtype=np.float64)
+    y = np.zeros(100, dtype=np.float64)
+
 
     for i in range(n):
-        # lag
+
         if desde[i] - 1 < i:
             out[i + 4*n] = columna[i-1]
         else:
@@ -38,6 +45,7 @@ def fhistC_py(columna, desde):
         xvalor = 1
         for j in range(desde[i] - 1, i + 1):
             a = columna[j]
+
             if not np.isnan(a):
                 y[libre] = a
                 x[libre] = xvalor
@@ -45,15 +53,14 @@ def fhistC_py(columna, desde):
             xvalor += 1
 
         if libre > 1:
-            xs = x[:libre]
-            ys = y[:libre]
-            xsum = xs.sum()
-            ysum = ys.sum()
-            xysum = (xs * ys).sum()
-            xxsum = (xs * xs).sum()
-            vmin = ys.min()
-            vmax = ys.max()
+            xsum = x[:libre].sum()
+            ysum = y[:libre].sum()
+            xysum = (x[:libre] * y[:libre]).sum()
+            xxsum = (x[:libre] * x[:libre]).sum()
+            vmin = y[:libre].min()
+            vmax = y[:libre].max()
 
+            # Cálculo de la pendiente (fórmula inalterada)
             pendiente = (libre * xysum - xsum * ysum) / (libre * xxsum - xsum * xsum)
 
             out[i] = pendiente
@@ -61,7 +68,11 @@ def fhistC_py(columna, desde):
             out[i+2*n] = vmax
             out[i+3*n] = ysum / libre
         else:
-            out[i:i+4*n:n] = np.nan
+            # Asignación de NaN
+            out[i] = np.nan
+            out[i+n] = np.nan
+            out[i+2*n] = np.nan
+            out[i+3*n] = np.nan
 
     return out
 
@@ -83,15 +94,13 @@ def tendencia_polars(
 
     # 1. calcular vector_desde igual que en R
     vector_desde = calcular_vector_desde(df, ventana)
-    df = df.with_columns(pl.Series("vector_desde", vector_desde))
-
     n = df.height
     
     # 2. por cada columna, aplicar fhistC_py y agregar columnas
     for col in cols:
 
         # ejecutar algoritmo C++ traducido
-        out = fhistC_py(df[col].to_numpy(), df["vector_desde"].to_numpy())
+        out = fhistC_py_numba(df[col].to_numpy(), vector_desde)
 
         # separar los 5 bloques
         ind = np.arange(n)
@@ -117,8 +126,6 @@ def tendencia_polars(
             df = df.with_columns(
                 pl.Series(f"{col}_ratiomax{ventana}", df[col].to_numpy() / out[2*n : 3*n])
             )
-
-    # quitar vector_desde 
-    df = df.drop("vector_desde")
+            
     return df
 

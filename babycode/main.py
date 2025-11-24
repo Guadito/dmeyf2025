@@ -97,7 +97,7 @@ def main():
     logger.info(f"✓ Datos luego de agregar lags: {df_f.shape}")
 
 
-    df_df = tendencia_polars(df_f, col, ventana=6, tendencia=True, minimo=False, maximo=False, promedio=False, ratioavg=False, ratiomax=False)
+    df_f = tendencia_polars(df_f, col, ventana=6, tendencia=True, minimo=False, maximo=False, promedio=False, ratioavg=False, ratiomax=False)
     logger.info(f"✓ Datos luego de agregar tendencias: {df_f.shape}")
     
     #df_f = zero_replace(df_f)
