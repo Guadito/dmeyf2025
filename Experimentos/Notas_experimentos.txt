@@ -1,0 +1,17 @@
+Objetivo: 
+
+Problema: estacionalidad de las series temporales, efectos de la pandemia, meses rotos.
+
+Hipótesis: algunos meses pueden ser extraídos del dataset para obtener mejores resultados en la ganancia. 
+
+    Se compararán las ganancias entrenando los modelos
+    1 - todos los meses disponibles
+    2 - los meses excepto el rango 202001 202006 inclusive
+    3 - los meses excepto el rango 202003 202006 inclusive
+    4 - los meses excepto meses 201905, 201910, 202006 (visiblemente rotos)
+    5 - el rango entre 202006 y 202106 
+
+
+    mes de test : 202106
+        
+
