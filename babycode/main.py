@@ -80,7 +80,7 @@ def main():
 
 
     # 2- Feature engineering
-    cols_to_drop = ['mprestamos_personales', 'cprestamos_personales'] # 'visa_cadelantosefectivo' 'cdescubierto_preacordado'
+    cols_to_drop = ['mprestamos_personales', 'cprestamos_personales'] # 'visa_cadelantosefectivo' 'cdescubierto_preacordado' VER DESCUENTOS
     df_f = drop_columns(df_f, cols_to_drop)
     
     df_f = df_f.with_columns([(pl.col("foto_mes") % 100).alias("nmes")]) 
