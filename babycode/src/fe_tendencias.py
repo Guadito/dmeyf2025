@@ -2,7 +2,7 @@ import polars as pl
 import numpy as np
 
 def calcular_vector_desde(df, ventana):
-    n = df.height()
+    n = df.height
     ids = df["numero_de_cliente"].to_numpy()
     desde = np.arange(-ventana + 2, n - ventana + 2)
     desde[:ventana] = 1
@@ -85,7 +85,7 @@ def tendencia_polars(
     vector_desde = calcular_vector_desde(df, ventana)
     df = df.with_columns(pl.Series("vector_desde", vector_desde))
 
-    n = df.height()
+    n = df.height
     
     # 2. por cada columna, aplicar fhistC_py y agregar columnas
     for col in cols:
