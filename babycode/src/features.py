@@ -808,6 +808,29 @@ def generar_sobre_edad(df: pl.DataFrame, columnas: list[str]) -> pl.DataFrame:
     return df.with_columns(nuevas_columnas)
 
 
+#--------------------> generar semillas: 
+
+def generar_seeds(semilla_primigenia: int, cantidad: int,
+                     rango_min: int = 100000, rango_max: int = 1000000) -> list[int]:
+    import random
+    from sympy import primerange
+
+    if cantidad <= 0:
+        raise ValueError("La cantidad de primos a generar debe ser mayor que cero.")
+    if rango_min >= rango_max:
+        raise ValueError("rango_min debe ser menor que rango_max.")
+
+    random.seed(semilla_primigenia)
+    primos = list(primerange(rango_min, rango_max))
+
+    if cantidad > len(primos):
+        raise ValueError(f"No hay suficientes primos en el rango: {len(primos)} disponibles.")
+
+    return random.sample(primos, cantidad)
+
+
+
+
 # -------------------> funcion tendencias
 
 def tendencia_polars(df, cols, ventana=6, tendencia=True, minimo=True, maximo=True, promedio=True):

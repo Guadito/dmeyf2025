@@ -108,12 +108,12 @@ def main():
 
     
     #2 - entrenar el modelo y evaluar ganancias
-    training = (eliminar_meses_lista(MES_TRAIN, mes_inicio=202001, mes_fin=202006)
+    training = MES_TRAIN
     validation = MES_TEST
     lgb_train, X_train, y_train, X_val, y_val = preparar_datos_training_lgb(df_f, 
                                                                                 training=training, 
                                                                                 validation=validation, 
-                                                                                undersampling_0= 0.2,
+                                                                                undersampling_0= 0.05,
                                                                                 qcanaritos = 5)
     
 
@@ -124,12 +124,12 @@ def main():
 
 
     #3 - entrenar el modelo final y predecir
-    training =  (eliminar_meses_lista(FINAL_TRAIN, mes_inicio=202001, mes_fin=202006)
+    training =  FINAL_TRAIN
     predict = FINAL_PREDICT
     lgb_train_final, X_train_final, y_train_final, X_pred, clientes_predict = preparar_datos_final_zlgb (df_f, 
                                                                                                          training=training, 
                                                                                                          predict=predict, 
-                                                                                                         undersampling_0= 0.2,
+                                                                                                         undersampling_0= 0.05,
                                                                                                          qcanaritos = 5)
 
     modelo_final = entrenar_modelo(lgb_train_final, PARAMETROS_LGBM_Z, tipo="final")
