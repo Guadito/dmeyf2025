@@ -145,7 +145,7 @@ def preparar_datos_training_lgb(
 
 # -------------------> zlightgbm
 
-def entrenar_modelo(lgb_train: lgb.Dataset, params: dict, tipo: str = None) -> list:
+def entrenar_modelo(lgb_train: lgb.Dataset, params: dict, semillas: list, tipo: str = None) -> list:
     """
     Entrena un modelo con diferentes semillas.
     
@@ -160,25 +160,23 @@ def entrenar_modelo(lgb_train: lgb.Dataset, params: dict, tipo: str = None) -> l
     """
     modelos = []
 
-    logger.info(f"Entrenando modelo")
-
-    # Entrenar modelo
-    modelo = lgb.train(
-        params,
-        lgb_train
-        )
-        
-    modelos.append(modelo)
-    logger.info(f"Modelo entrenado exitosamente")
-
     # Crear carpeta para bases de datos si no existe
     path_db = os.path.join(BUCKET_NAME, "modelos_modelos")
     os.makedirs(path_db, exist_ok=True)
     study_name = STUDY_NAME
 
-    semilla = params.get("seed", "NO_SEED")
-    arch_modelo = os.path.join(path_db, f"mod_{study_name}_{tipo}_{semilla}.txt")
-    modelo.save_model(arch_modelo)
+    
+    for semilla in semillas:
+        logger.info(f"Entrenando modelo con semilla {semilla}")
+
+        params["seed"] = semilla
+        
+        # Entrenar modelo
+        modelo = lgb.train(params,lgb_train)
+        modelos.append(modelo)
+    
+        arch_modelo = os.path.join(path_db, f"mod_{study_name}_{tipo}_{semilla}.txt")
+        modelo.save_model(arch_modelo)
     
     logger.info(f"Total de modelos entrenados: {len(modelos)}")
 

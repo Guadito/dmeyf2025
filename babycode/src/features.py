@@ -810,7 +810,7 @@ def generar_sobre_edad(df: pl.DataFrame, columnas: list[str]) -> pl.DataFrame:
 
 #--------------------> generar semillas: 
 
-def generar_seeds(semilla_primigenia: int, cantidad: int,
+def generar_seeds(semilla_primigenia: int, cantidad: int = 1,
                      rango_min: int = 100000, rango_max: int = 1000000) -> list[int]:
     import random
     from sympy import primerange

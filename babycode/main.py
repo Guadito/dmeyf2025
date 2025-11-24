@@ -105,8 +105,6 @@ def main():
     
 
     
-
-    
     #2 - entrenar el modelo y evaluar ganancias
     training = MES_TRAIN
     validation = MES_TEST
@@ -117,8 +115,8 @@ def main():
                                                                                 qcanaritos = 5)
     
 
-
-    modelo = entrenar_modelo(lgb_train, PARAMETROS_LGBM_Z, tipo="intermedio")
+    seeds = generar_seeds(semilla_primigenia = SEMILLA[0], cantidad = 1)
+    modelo = entrenar_modelo(lgb_train, PARAMETROS_LGBM_Z, seeds, tipo="intermedio")
     cortes = [9000, 9500, 10000, 10500, 11000, 11500, 12000, 12500, 13000, 13500]
     _,_,_,_,_,_,mejor_corte = evaluar_en_test(modelo, X_val, y_val, cortes=cortes, corte_fijo= 11000)
 
@@ -132,7 +130,7 @@ def main():
                                                                                                          undersampling_0= 0.05,
                                                                                                          qcanaritos = 5)
 
-    modelo_final = entrenar_modelo(lgb_train_final, PARAMETROS_LGBM_Z, tipo="final")
+    modelo_final = entrenar_modelo(lgb_train_final, PARAMETROS_LGBM_Z, seeds, tipo="final")
     generar_predicciones_por_cantidad(modelo_final, X_pred, clientes_predict, corte = mejor_corte)
 
 

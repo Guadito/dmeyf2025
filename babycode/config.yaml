@@ -79,7 +79,6 @@ params_lgb_z:
         feature_pre_filter: FALSE
         force_row_wise: TRUE
         verbosity: -100
-        seed: 111119
         max_bin: 31
         num_iterations: 9999
         num_leaves: 9999
