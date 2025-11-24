@@ -6,7 +6,7 @@ import re
 import sys
 print(sys.executable)
 import numpy as np
-
+import sympy 
 import os
 import duckdb
 import pandas as pd 
@@ -538,6 +538,11 @@ def feature_engineering_lag_delta_polars(
     
     logger.info(f"Completado: {df_result.shape}")
     logger.info(f"Nuevas columnas creadas: {len(expresiones)}")
+
+    try:
+        df_result = df_result.drop("periodo0")
+    except pl.ColumnNotFoundError:
+        pass
     
     return df_result
 
