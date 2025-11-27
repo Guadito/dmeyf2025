@@ -4,7 +4,7 @@ BUCKET_NAME: '/home/guadalesandro/buckets/b1'
 competencia01:
             DATA_PATH_BASE_NT: "C:\\Users\\Guada\\Desktop\\babycode\\datasets\\competencia_01_crudo.csv"
             DATA_PATH_BASE_VM: '/home/guadalesandro/buckets/b1/datasets/competencia_01_crudo.csv'
-            SEMILLAS: [102191, 111119, 111121, 599999, 666667, 888887]
+            SEMILLAS: [111119, 111121, 599999, 666667, 888887]
             MES_TRAIN: [202101, 202102]
             MES_VAL: 202103
             MES_TEST: 202104
@@ -85,6 +85,7 @@ params_lgb_z_2:
         num_leaves: 9999
         learning_rate: 1.0
         feature_fraction: 0.5
+
 
 competencia03:
             DATA_PATH_BASE_NT: "C:\\Users\\Guada\\Desktop\\babycode\\datasets\\competencia_02_crudo.csv"
