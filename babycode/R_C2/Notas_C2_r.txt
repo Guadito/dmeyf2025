@@ -1,0 +1,68 @@
+
+1) APO 506 + undersampling 0.2
+KAapo-506-0.2undersampling_9960.csv    409.599
+
+
+2) APO 506_a + undersampling 0.2
+saco variables 
+#dataset[, cprestamos_prendarios := NULL ]
+#dataset[, mprestamos_prendarios := NULL ]
+406799 para corte 9020
+399199 para corte 11000
+
+
+3) APO 506_b + undersampling default
+403.199 corte 10.000
+
+4) APO 506_c + undersampling default
+sin meses   #202001, 202002, 202003, 202004, 202005, 202006,
+agrego esta variable: 
+dataset[, mcuentas_saldo_sobre_edad := mcuentas_saldo / cliente_edad]
+401.999
+
+
+4) APO 506_d + undersampling default
+sin meses   #202001, 202002, 202003, 202004, 202005, 202006,
+quito esta variable: 
+dataset[, active_quarter := NULL ]
+402.399
+
+
+4) APO 506_e + undersampling default
+sin meses   #202001, 202002, 202003, 202004, 202005, 202006,
+quito esta variable: 
+dataset[, ctrx_quarter := NULL]
+401.599
+
+5) apo-506_f + undersampling default
+sin meses   #202001, 202002, 202003, 202004, 202005, 202006,
+Dejé todas las variables por default. 
+Agregué ensemble random forest de workflow
+401.199
+
+6) apo-506_g + undersampling 0.2      ---------- en rama temp-08vcpu-128ram-20251116-004232 -. pasado a main
+sin meses   #202001, 202002, 202003, 202004, 202005, 202006,
+411.599
+
+7) apo-506_h + undersampling 0.5      ---------- en rama temp-08vcpu-128ram-20251116-004232 -. pasado a main
+sin meses   #202001, 202002, 202003, 202004, 202005, 202006,
+407.999
+
+9) apo-506_i : parto del modelo  APO 506_b
+undersampling default 
+sin meses pandemia
+agrego zero_replace para reemplazar los meses que son todo 0 con nan
+401.999
+
+10) apo-506_j
+parto del modelo APO 506_b
+undersampling default
+sin meses pandemia
+hago ranking -1 0 1 
+397.599
+
+11) apo-506_k
+hago ratio de columnas de montos y edad. 
+
+    
+
